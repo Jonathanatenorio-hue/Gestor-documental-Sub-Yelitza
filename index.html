@@ -3,929 +3,497 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ExpertCell – Sistema de Gestión Documental</title>
+<title>ExpertCell – Gestión Documental</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{
-  --pri:#1B75BB;--dk:#0D4F80;--lt:#E8F2FA;--acc:#2E8BC0;--bg:#F0F4F8;
-  --card:#fff;--txt:#2D3748;--muted:#718096;--bdr:#E2E8F0;
-  --ok:#2E7D32;--warn:#E65100;--red:#C62828;--oklt:#E8F5E9;--warnlt:#FFF3E0;--redlt:#FFEBEE;
-  --radius:10px;
-}
+:root{--pri:#1B75BB;--dk:#0D4F80;--lt:#E8F2FA;--bg:#F0F4F8;--card:#fff;--txt:#2D3748;--muted:#718096;--bdr:#E2E8F0;--ok:#2E7D32;--warn:#E65100;--red:#C62828;--oklt:#E8F5E9;--warnlt:#FFF3E0}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#c0cdd8;border-radius:3px}
-button{font-family:inherit;cursor:pointer}
-input,select,textarea{font-family:inherit}
-
-/* ═══ SIDEBAR ═══ */
-.sidebar{position:fixed;left:0;top:0;width:230px;height:100vh;background:linear-gradient(180deg,#082440 0%,var(--dk) 100%);z-index:100;display:flex;flex-direction:column;transition:.3s}
-.sb-logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
-.sb-logo svg{display:block}
-.sb-nav{flex:1;padding:14px 10px;overflow-y:auto}
-.sb-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;color:rgba(255,255,255,.6);font-size:13px;font-weight:600;cursor:pointer;transition:.2s;margin-bottom:2px;border:none;background:none;width:100%;text-align:left}
-.sb-item:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}
-.sb-item.active{background:rgba(27,117,187,.3);color:#fff}
-.sb-item .icon{font-size:17px;width:24px;text-align:center}
-.sb-badge{margin-left:auto;background:var(--pri);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
-.sb-section{font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1px;padding:16px 14px 6px;font-weight:700}
-.sb-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:10px;color:rgba(255,255,255,.25);text-align:center}
-
-/* ═══ MAIN ═══ */
-.main{margin-left:230px;min-height:100vh}
-.topbar{background:var(--card);border-bottom:1px solid var(--bdr);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
-.topbar h1{font-size:17px;color:var(--dk);font-weight:700}
-.topbar .actions{display:flex;gap:8px;align-items:center}
-.content{padding:24px 28px}
-
-/* ═══ BUTTONS ═══ */
-.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:7px}
-.btn:hover{transform:translateY(-1px)}
-.btn-pri{background:linear-gradient(135deg,var(--dk),var(--pri));color:#fff;box-shadow:0 2px 8px rgba(13,79,128,.25)}
+body{font-family:system-ui,sans-serif;background:var(--bg);color:var(--txt)}
+.sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;background:linear-gradient(180deg,#082440,var(--dk));padding:20px 10px;color:#fff}
+.logo{font-size:18px;font-weight:700;padding:10px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,.1)}
+.nav-item{display:block;width:100%;padding:12px 16px;margin:4px 0;border:none;background:none;color:rgba(255,255,255,.7);font-size:14px;text-align:left;border-radius:8px;cursor:pointer}
+.nav-item:hover,.nav-item.active{background:rgba(255,255,255,.1);color:#fff}
+.main{margin-left:220px;padding:24px}
+.topbar{background:var(--card);padding:16px 24px;border-radius:10px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.topbar h1{font-size:18px;color:var(--dk)}
+.btn{padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.btn-pri{background:var(--pri);color:#fff}
 .btn-ok{background:var(--ok);color:#fff}
-.btn-warn{background:var(--warn);color:#fff}
-.btn-ghost{background:none;border:1.5px solid var(--bdr);color:var(--txt)}
-.btn-ghost:hover{border-color:var(--pri);color:var(--pri)}
-.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
-.btn-red{background:var(--red);color:#fff}
-.btn-danger-ghost{background:none;border:1.5px solid var(--red);color:var(--red);padding:6px 12px;font-size:12px;border-radius:6px}
-
-/* ═══ STATS CARDS ═══ */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-.stat-card{background:var(--card);border-radius:var(--radius);padding:18px 20px;border:1px solid var(--bdr);position:relative;overflow:hidden}
-.stat-card::after{content:'';position:absolute;top:0;left:0;width:4px;height:100%}
-.stat-card.blue::after{background:var(--pri)}.stat-card.green::after{background:var(--ok)}
-.stat-card.orange::after{background:var(--warn)}.stat-card.red::after{background:var(--red)}
-.stat-num{font-size:28px;font-weight:800;color:var(--dk);line-height:1}
-.stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
-
-/* ═══ TABLE ═══ */
-.table-wrap{background:var(--card);border-radius:var(--radius);border:1px solid var(--bdr);overflow:hidden}
-.table-toolbar{padding:14px 18px;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--bdr);flex-wrap:wrap}
-.search-box{padding:8px 14px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;width:240px;outline:none;transition:border .2s}
-.search-box:focus{border-color:var(--pri)}
-.filter-sel{padding:8px 12px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;outline:none;background:#fff}
-table.data-tbl{width:100%;border-collapse:collapse}
-table.data-tbl th{padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;background:#FAFBFC;border-bottom:1px solid var(--bdr)}
-table.data-tbl td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--bdr);vertical-align:middle}
-table.data-tbl tr:hover td{background:#F7FAFC}
-.badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
-.badge-minuta{background:var(--lt);color:var(--pri)}
-.badge-aviso{background:var(--warnlt);color:var(--warn)}
-.badge-firmado{background:var(--oklt);color:var(--ok)}
-.badge-pendiente{background:var(--warnlt);color:var(--warn)}
-.badge-borrador{background:#F1F1F1;color:#888}
-.evidence-indicator{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600}
-.evidence-yes{color:var(--ok)}.evidence-no{color:var(--muted)}
-
-/* ═══ MODAL ═══ */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:30px 20px;overflow-y:auto}
-.modal{background:var(--card);border-radius:14px;width:100%;max-width:820px;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:modalIn .3s ease}
-@keyframes modalIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.modal-hdr{padding:18px 24px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between}
-.modal-hdr h2{font-size:16px;color:var(--dk);font-weight:700}
-.modal-close{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px}
-.modal-body{padding:20px 24px;max-height:70vh;overflow-y:auto}
-.modal-footer{padding:14px 24px;border-top:1px solid var(--bdr);display:flex;gap:10px;justify-content:flex-end}
-
-/* ═══ FORM ELEMENTS ═══ */
-.fg{margin-bottom:13px}
-.fg label{display:block;font-size:11px;font-weight:700;color:var(--dk);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
-.fg label .req{color:var(--red)}
-.fg input,.fg select,.fg textarea{width:100%;padding:9px 13px;border:1.5px solid var(--bdr);border-radius:8px;font-size:13px;color:var(--txt);outline:none;transition:border .2s;background:#fff}
-.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--pri)}
-.fg textarea{resize:vertical}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
-.sec-title{font-size:13px;font-weight:700;color:var(--pri);padding:10px 0 8px;border-bottom:1px solid var(--bdr);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-.mini-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px}
-.mini-tbl th{padding:6px 8px;background:var(--lt);color:var(--dk);font-weight:700;font-size:10px;text-transform:uppercase;border:1px solid var(--bdr);text-align:left}
-.mini-tbl td{padding:3px;border:1px solid var(--bdr)}
-.mini-tbl input,.mini-tbl select{width:100%;padding:5px 7px;border:none;background:transparent;font-size:12px;outline:none;font-family:inherit;box-sizing:border-box}
-.btn-add-row{padding:4px 12px;background:none;border:1.5px dashed var(--pri);border-radius:5px;color:var(--pri);font-size:11px;font-weight:600;cursor:pointer;margin-top:4px}
-
-/* ═══ UPLOAD ZONE ═══ */
-.upload-zone{border:2px dashed var(--bdr);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s;background:#FAFBFC}
-.upload-zone:hover{border-color:var(--pri);background:var(--lt)}
-.upload-zone.dragover{border-color:var(--pri);background:var(--lt)}
-.upload-icon{font-size:32px;margin-bottom:6px}
-.upload-text{font-size:13px;color:var(--muted);font-weight:500}
-.upload-text b{color:var(--pri)}
-.file-preview{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#FAFBFC;border-radius:8px;border:1px solid var(--bdr);margin-top:8px}
-.file-preview img{width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid var(--bdr)}
-.file-preview .info{flex:1}
-.file-preview .info .name{font-size:12px;font-weight:600;color:var(--txt)}
-.file-preview .info .size{font-size:11px;color:var(--muted)}
-
-/* ═══ DETAIL VIEW ═══ */
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.detail-section{background:#FAFBFC;border-radius:8px;padding:14px 16px;border:1px solid var(--bdr)}
-.detail-section h3{font-size:12px;font-weight:700;color:var(--pri);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px}
-.detail-row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-bottom:1px solid #f0f0f0}
-.detail-row:last-child{border-bottom:none}
-.detail-row .dl{color:var(--muted);font-weight:600}.detail-row .dv{color:var(--txt);font-weight:500;text-align:right}
-.evidence-img{width:100%;max-height:300px;object-fit:contain;border-radius:8px;border:1px solid var(--bdr);margin-top:8px}
-
-/* ═══ DRIVE CONFIG ═══ */
-.config-box{background:var(--lt);border:1px solid rgba(27,117,187,.2);border-radius:10px;padding:18px 20px;margin-bottom:16px}
-.config-box h3{font-size:14px;color:var(--dk);font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.config-box p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px}
-.config-status{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600}
-.config-status.connected{background:var(--oklt);color:var(--ok)}
-.config-status.disconnected{background:#F1F1F1;color:#888}
-
-/* ═══ EMPTY STATE ═══ */
-.empty-state{text-align:center;padding:50px 20px}
-.empty-state .icon{font-size:48px;margin-bottom:12px}
-.empty-state h3{font-size:16px;color:var(--dk);margin-bottom:6px}
-.empty-state p{font-size:13px;color:var(--muted);margin-bottom:16px}
-
-/* ═══ TOAST ═══ */
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.2);z-index:999;animation:slideUp .35s ease;color:#fff}
-.toast.ok{background:var(--ok)}.toast.err{background:var(--red)}.toast.info{background:var(--pri)}
-@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-
-/* ═══ RESPONSIVE ═══ */
-@media(max-width:900px){
-  .sidebar{width:60px}.sidebar .sb-item span:not(.icon),.sb-section,.sb-footer,.sb-badge{display:none}
-  .sb-logo svg{width:30px !important;overflow:hidden}
-  .main{margin-left:60px}
-  .stats{grid-template-columns:1fr 1fr}.detail-grid{grid-template-columns:1fr}
-}
+.btn-ghost{background:none;border:2px solid var(--bdr);color:var(--txt)}
+.card{background:var(--card);border-radius:10px;padding:20px;margin-bottom:16px;border:1px solid var(--bdr)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.stat{background:var(--card);padding:20px;border-radius:10px;border-left:4px solid var(--pri)}
+.stat-num{font-size:32px;font-weight:800;color:var(--dk)}
+.stat-label{font-size:12px;color:var(--muted);text-transform:uppercase}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;text-align:left;border-bottom:1px solid var(--bdr)}
+th{background:#f8f9fa;font-size:12px;color:var(--muted);text-transform:uppercase}
+.badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.badge-min{background:var(--lt);color:var(--pri)}
+.badge-avi{background:var(--warnlt);color:var(--warn)}
+.badge-ok{background:var(--oklt);color:var(--ok)}
+.badge-pend{background:var(--warnlt);color:var(--warn)}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--dk);margin-bottom:6px;text-transform:uppercase}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;border:2px solid var(--bdr);border-radius:8px;font-size:14px}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--pri);outline:none}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:14px 28px;border-radius:10px;color:#fff;font-weight:600;z-index:1000;display:none}
+.toast.ok{background:var(--ok)}.toast.err{background:var(--red)}
+.loading{position:fixed;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:999;font-size:18px;color:var(--dk)}
+.hidden{display:none!important}
+.actions button{margin-left:8px;padding:6px 12px;font-size:12px}
 </style>
 </head>
 <body>
 
-<!-- ═══ SIDEBAR ═══ -->
+<div class="loading" id="loading">⏳ Cargando datos de Drive...</div>
+
 <nav class="sidebar">
-  <div class="sb-logo">
-    <svg viewBox="0 0 180 40" width="150" height="34" fill="none">
-      <circle cx="18" cy="20" r="14" stroke="#fff" stroke-width="1.8" fill="none" opacity=".7"/>
-      <ellipse cx="18" cy="20" rx="7.5" ry="14" stroke="#fff" stroke-width="1.4" fill="none" opacity=".5" transform="rotate(30 18 20)"/>
-      <ellipse cx="18" cy="20" rx="7.5" ry="14" stroke="#fff" stroke-width="1.4" fill="none" opacity=".5" transform="rotate(-30 18 20)"/>
-      <line x1="4" y1="20" x2="32" y2="20" stroke="#fff" stroke-width="1.4" opacity=".6"/>
-      <text x="40" y="26" font-family="DM Sans" font-size="19" font-weight="700" fill="#fff" letter-spacing=".3">ExpertCell</text>
-    </svg>
-  </div>
-  <div class="sb-nav">
-    <div class="sb-section">Principal</div>
-    <button class="sb-item active" onclick="showPage('dashboard')"><span class="icon">📊</span><span>Dashboard</span></button>
-    <button class="sb-item" onclick="showPage('nuevo')"><span class="icon">➕</span><span>Nuevo Documento</span></button>
-    <div class="sb-section">Historial</div>
-    <button class="sb-item" onclick="showPage('minutas')"><span class="icon">📋</span><span>Minutas</span><span class="sb-badge" id="badge-min">0</span></button>
-    <button class="sb-item" onclick="showPage('avisos')"><span class="icon">📢</span><span>Avisos</span><span class="sb-badge" id="badge-avi">0</span></button>
-    <div class="sb-section">Sistema</div>
-    <button class="sb-item" onclick="showPage('drive')"><span class="icon">☁️</span><span>Google Drive</span></button>
-  </div>
-  <div class="sb-footer">ExpertCell © 2026<br>Distribuidor Autorizado AT&T</div>
+  <div class="logo">📋 ExpertCell</div>
+  <button class="nav-item active" onclick="showPage('dashboard')">📊 Dashboard</button>
+  <button class="nav-item" onclick="showPage('nuevo')">➕ Nuevo Documento</button>
+  <button class="nav-item" onclick="showPage('minutas')">📋 Minutas</button>
+  <button class="nav-item" onclick="showPage('avisos')">📢 Avisos</button>
+  <button class="nav-item" onclick="showPage('config')">⚙️ Configuración</button>
 </nav>
 
-<!-- ═══ MAIN ═══ -->
 <div class="main">
   <div class="topbar">
     <h1 id="page-title">Dashboard</h1>
-    <div class="actions">
-      <button class="btn btn-pri" onclick="showPage('nuevo')">➕ Nuevo Documento</button>
-    </div>
+    <button class="btn btn-pri" onclick="showPage('nuevo')">➕ Nuevo Documento</button>
   </div>
-  <div class="content" id="page-content"></div>
+  <div id="content"></div>
 </div>
 
-<!-- ═══ TOAST ═══ -->
-<div id="toast" class="toast ok" style="display:none"></div>
+<div class="toast" id="toast"></div>
 
 <script>
-// ══════════════════════════════════════════════════════
-// DATA STORE (localStorage)
-// ══════════════════════════════════════════════════════
-const STORAGE_KEY = 'ec_docs_v2';
-function loadDocs(){ try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch(e){return[];} }
-function saveDocs(docs){ localStorage.setItem(STORAGE_KEY, JSON.stringify(docs)); }
-function genId(){ return 'DOC-'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase(); }
+// CONFIG - TU URL DE APPS SCRIPT
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby6G8R-eL-Q7is-0yqRMQ8mFSP6vhL1KFn6pMp6TEcB77KUeGSlGrTiulOEhKwlmAtw2Q/exec';
 
-const DRIVE_KEY = 'ec_drive_config';
-function loadDriveConfig(){ try{return JSON.parse(localStorage.getItem(DRIVE_KEY))||{url:'https://script.google.com/macros/s/AKfycby6G8R-eL-Q7is-0yqRMQ8mFSP6vhL1KFn6pMp6TEcB77KUeGSlGrTiulOEhKwlmAtw2Q/exec',connected:true};}catch(e){return{url:'https://script.google.com/macros/s/AKfycby6G8R-eL-Q7is-0yqRMQ8mFSP6vhL1KFn6pMp6TEcB77KUeGSlGrTiulOEhKwlmAtw2Q/exec',connected:true};} }
-function saveDriveConfig(cfg){ localStorage.setItem(DRIVE_KEY, JSON.stringify(cfg)); }
-
-// ══════════════════════════════════════════════════════
-// TOAST
-// ══════════════════════════════════════════════════════
-function toast(msg, type='ok'){
-  const t=document.getElementById('toast');
-  t.className='toast '+type; t.textContent=msg; t.style.display='block';
-  setTimeout(()=>t.style.display='none',3500);
-}
-
-// ══════════════════════════════════════════════════════
-// NAVIGATION
-// ══════════════════════════════════════════════════════
+let documents = [];
 let currentPage = 'dashboard';
-function showPage(page){
+
+// ══════ API FUNCTIONS ══════
+async function loadFromDrive() {
+  try {
+    const response = await fetch(SCRIPT_URL + '?action=getAll');
+    const data = await response.json();
+    if (data.success) {
+      documents = data.documents || [];
+      return true;
+    }
+  } catch (e) {
+    console.error('Error loading:', e);
+  }
+  return false;
+}
+
+async function saveToDrive(doc) {
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', document: doc })
+    });
+    return true;
+  } catch (e) {
+    console.error('Error saving:', e);
+    return false;
+  }
+}
+
+async function deleteFromDrive(id) {
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'delete', id: id })
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ══════ UI HELPERS ══════
+function toast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function showLoading(show) {
+  document.getElementById('loading').classList.toggle('hidden', !show);
+}
+
+function genId() {
+  return 'DOC-' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const p = d.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d;
+}
+
+// ══════ NAVIGATION ══════
+async function showPage(page) {
   currentPage = page;
-  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Historial de Minutas',avisos:'Historial de Avisos',drive:'Configuración Google Drive'};
-  document.getElementById('page-title').textContent = labels[page]||'';
-  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,drive:4};
-  if(navMap[page]!==undefined) document.querySelectorAll('.sb-item')[navMap[page]]?.classList.add('active');
-  updateBadges();
-  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),drive:renderDrive};
-  (renderers[page]||renderDashboard)();
+  document.querySelectorAll('.nav-item').forEach((b, i) => {
+    b.classList.toggle('active', i === ['dashboard', 'nuevo', 'minutas', 'avisos', 'config'].indexOf(page));
+  });
+  const titles = { dashboard: 'Dashboard', nuevo: 'Nuevo Documento', minutas: 'Minutas', avisos: 'Avisos', config: 'Configuración' };
+  document.getElementById('page-title').textContent = titles[page] || '';
+  
+  const renderers = { dashboard: renderDashboard, nuevo: renderNuevo, minutas: () => renderList('minuta'), avisos: () => renderList('aviso'), config: renderConfig };
+  (renderers[page] || renderDashboard)();
 }
 
-function updateBadges(){
-  const docs=loadDocs();
-  document.getElementById('badge-min').textContent=docs.filter(d=>d.type==='minuta').length;
-  document.getElementById('badge-avi').textContent=docs.filter(d=>d.type==='aviso').length;
-}
+// ══════ DASHBOARD ══════
+function renderDashboard() {
+  const mins = documents.filter(d => d.type === 'minuta').length;
+  const avis = documents.filter(d => d.type === 'aviso').length;
+  const firm = documents.filter(d => d.status === 'firmado').length;
+  const pend = documents.filter(d => d.status === 'pendiente').length;
 
-// ══════════════════════════════════════════════════════
-// DASHBOARD
-// ══════════════════════════════════════════════════════
-function renderDashboard(){
-  const docs=loadDocs();
-  const minutas=docs.filter(d=>d.type==='minuta');
-  const avisos=docs.filter(d=>d.type==='aviso');
-  const firmados=docs.filter(d=>d.status==='firmado');
-  const pendientes=docs.filter(d=>d.status==='pendiente');
-
-  let h=`<div class="stats">
-    <div class="stat-card blue"><div class="stat-num">${docs.length}</div><div class="stat-label">Total documentos</div></div>
-    <div class="stat-card blue"><div class="stat-num">${minutas.length}</div><div class="stat-label">Minutas</div></div>
-    <div class="stat-card green"><div class="stat-num">${firmados.length}</div><div class="stat-label">Firmados</div></div>
-    <div class="stat-card orange"><div class="stat-num">${pendientes.length}</div><div class="stat-label">Pendientes de firma</div></div>
+  let h = `<div class="stats">
+    <div class="stat"><div class="stat-num">${documents.length}</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num">${mins}</div><div class="stat-label">Minutas</div></div>
+    <div class="stat"><div class="stat-num">${firm}</div><div class="stat-label">Firmados</div></div>
+    <div class="stat"><div class="stat-num">${pend}</div><div class="stat-label">Pendientes</div></div>
   </div>`;
 
-  // Recent docs
-  h+='<div class="table-wrap">';
-  h+='<div class="table-toolbar"><span style="font-weight:700;font-size:14px;color:var(--dk)">📄 Documentos Recientes</span><div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage(\'nuevo\')">➕ Nuevo</button></div></div>';
-
-  if(docs.length===0){
-    h+=`<div class="empty-state"><div class="icon">📂</div><h3>Sin documentos aún</h3><p>Crea tu primera minuta o aviso para comenzar.</p><button class="btn btn-pri" onclick="showPage('nuevo')">➕ Crear documento</button></div>`;
+  h += '<div class="card"><h3 style="margin-bottom:16px">📄 Documentos Recientes</h3>';
+  if (documents.length === 0) {
+    h += '<p style="color:var(--muted);text-align:center;padding:40px">No hay documentos. Crea uno nuevo.</p>';
   } else {
-    const recent = docs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,8);
-    h+=`<table class="data-tbl"><thead><tr><th>Folio</th><th>Tipo</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
-    recent.forEach(d=>{
-      const typeClass = d.type==='minuta'?'badge-minuta':'badge-aviso';
-      const typeName = d.type==='minuta'?'Minuta':'Aviso';
-      const statusClass = d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
-      const evid = d.evidence?`<span class="evidence-indicator evidence-yes">✅ Sí</span>`:`<span class="evidence-indicator evidence-no">— No</span>`;
-      h+=`<tr>
-        <td><strong>${d.folio||'—'}</strong></td>
-        <td><span class="badge ${typeClass}">${typeName}</span></td>
-        <td>${d.title||'Sin título'}</td>
-        <td>${d.displayDate||'—'}</td>
-        <td><span class="badge ${statusClass}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
-        <td>${evid}</td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')" title="Ver detalle">👁️</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')" title="PDF">📕</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')" title="Word">📄</button>
-          <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')" title="Subir evidencia">📎</button>
+    h += '<table><thead><tr><th>Folio</th><th>Tipo</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody>';
+    documents.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).slice(0, 10).forEach(d => {
+      const typeB = d.type === 'minuta' ? 'badge-min' : 'badge-avi';
+      const typeN = d.type === 'minuta' ? 'Minuta' : 'Aviso';
+      const statB = d.status === 'firmado' ? 'badge-ok' : 'badge-pend';
+      const statN = d.status === 'firmado' ? 'Firmado' : 'Pendiente';
+      h += `<tr>
+        <td><strong>${d.folio || '—'}</strong></td>
+        <td><span class="badge ${typeB}">${typeN}</span></td>
+        <td>${d.title || '—'}</td>
+        <td>${d.displayDate || '—'}</td>
+        <td><span class="badge ${statB}">${statN}</span></td>
+        <td class="actions">
+          <button class="btn btn-ghost" onclick="downloadPDF('${d.id}')">📕 PDF</button>
+          <button class="btn btn-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
         </td>
       </tr>`;
     });
-    h+='</tbody></table>';
+    h += '</tbody></table>';
   }
-  h+='</div>';
-  document.getElementById('page-content').innerHTML=h;
+  h += '</div>';
+  document.getElementById('content').innerHTML = h;
 }
 
-// ══════════════════════════════════════════════════════
-// HISTORIAL (filtered list)
-// ══════════════════════════════════════════════════════
-function renderHistorial(type){
-  const docs=loadDocs().filter(d=>d.type===type).sort((a,b)=>b.createdAt-a.createdAt);
-  const typeName=type==='minuta'?'Minutas':'Avisos';
+// ══════ LIST VIEW ══════
+function renderList(type) {
+  const docs = documents.filter(d => d.type === type).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const typeName = type === 'minuta' ? 'Minutas' : 'Avisos';
 
-  let h=`<div class="table-wrap">
-    <div class="table-toolbar">
-      <input class="search-box" placeholder="🔍 Buscar por folio, título..." oninput="filterTable(this.value,'${type}')">
-      <select class="filter-sel" onchange="filterByStatus(this.value,'${type}')">
-        <option value="">Todos los estatus</option><option value="firmado">Firmados</option><option value="pendiente">Pendientes</option><option value="borrador">Borradores</option>
-      </select>
-      <select class="filter-sel" onchange="filterByEvidence(this.value,'${type}')">
-        <option value="">Con/Sin evidencia</option><option value="si">Con evidencia</option><option value="no">Sin evidencia</option>
-      </select>
-      <div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage('nuevo')">➕ Nuevo ${type==='minuta'?'Minuta':'Aviso'}</button></div>
+  let h = '<div class="card">';
+  if (docs.length === 0) {
+    h += `<p style="color:var(--muted);text-align:center;padding:40px">No hay ${typeName.toLowerCase()} registrados.</p>`;
+  } else {
+    h += '<table><thead><tr><th>Folio</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody>';
+    docs.forEach(d => {
+      const statB = d.status === 'firmado' ? 'badge-ok' : 'badge-pend';
+      const statN = d.status === 'firmado' ? 'Firmado' : 'Pendiente';
+      h += `<tr>
+        <td><strong>${d.folio || '—'}</strong></td>
+        <td>${d.title || '—'}</td>
+        <td>${d.displayDate || '—'}</td>
+        <td><span class="badge ${statB}">${statN}</span></td>
+        <td class="actions">
+          <button class="btn btn-ghost" onclick="downloadPDF('${d.id}')">📕 PDF</button>
+          <button class="btn btn-ghost" onclick="toggleStatus('${d.id}')">${d.status === 'firmado' ? '⏳' : '✅'}</button>
+          <button class="btn btn-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
+        </td>
+      </tr>`;
+    });
+    h += '</tbody></table>';
+  }
+  h += '</div>';
+  document.getElementById('content').innerHTML = h;
+}
+
+// ══════ NEW DOCUMENT FORM ══════
+let docType = 'minuta';
+
+function renderNuevo() {
+  const folioMin = 'EC-MIN-' + String(documents.filter(d => d.type === 'minuta').length + 1).padStart(3, '0');
+  const folioAvi = 'EC-AVI-' + String(documents.filter(d => d.type === 'aviso').length + 1).padStart(3, '0');
+
+  let h = `<div class="card">
+    <div style="display:flex;gap:10px;margin-bottom:20px">
+      <button class="btn ${docType === 'minuta' ? 'btn-pri' : 'btn-ghost'}" onclick="docType='minuta';renderNuevo()">📋 Minuta</button>
+      <button class="btn ${docType === 'aviso' ? 'btn-pri' : 'btn-ghost'}" onclick="docType='aviso';renderNuevo()">📢 Aviso</button>
     </div>`;
 
-  if(docs.length===0){
-    h+=`<div class="empty-state"><div class="icon">${type==='minuta'?'📋':'📢'}</div><h3>No hay ${typeName.toLowerCase()} registrad${type==='minuta'?'a':'o'}s</h3><p>Crea ${type==='minuta'?'una minuta':'un aviso'} para comenzar a llevar el historial.</p></div>`;
-  } else {
-    h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
-    docs.forEach(d=>{
-      const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
-      const ev=d.evidence?'<span class="evidence-indicator evidence-yes">✅ Sí</span>':'<span class="evidence-indicator evidence-no">— No</span>';
-      h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${d.evidence?'si':'no'}">
-        <td><strong>${d.folio||'—'}</strong></td><td>${d.title||'—'}</td><td>${d.displayDate||'—'}</td>
-        <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
-        <td>${ev}</td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')">👁️</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')">📕</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')">📄</button>
-          <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')">📎</button>
-          <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
-        </td>
-      </tr>`;
-    });
-    h+='</tbody></table>';
-  }
-  h+='</div>';
-  document.getElementById('page-content').innerHTML=h;
-}
-
-// Filters
-function filterTable(q, type){
-  const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
-  q=q.toLowerCase();
-  rows.forEach(r=>{r.style.display=(r.dataset.folio.includes(q)||r.dataset.title.includes(q))?'':'none';});
-}
-function filterByStatus(val, type){
-  const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
-  rows.forEach(r=>{r.style.display=(!val||r.dataset.status===val)?'':'none';});
-}
-function filterByEvidence(val, type){
-  const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
-  rows.forEach(r=>{r.style.display=(!val||r.dataset.evidence===val)?'':'none';});
-}
-
-// ══════════════════════════════════════════════════════
-// VIEW DOC DETAIL (Modal)
-// ══════════════════════════════════════════════════════
-function viewDoc(id){
-  const docs=loadDocs(); const d=docs.find(x=>x.id===id); if(!d)return;
-  const isM=d.type==='minuta';
-  let h=`<div class="modal-overlay" onclick="if(event.target===this)this.remove()"><div class="modal">
-    <div class="modal-hdr"><h2>${isM?'📋 Minuta':'📢 Aviso'}: ${d.folio||d.id}</h2><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button></div>
-    <div class="modal-body">
-      <div class="detail-grid">
-        <div class="detail-section"><h3>Información General</h3>
-          <div class="detail-row"><span class="dl">Folio</span><span class="dv">${d.folio||'—'}</span></div>
-          <div class="detail-row"><span class="dl">Tipo</span><span class="dv">${isM?'Minuta de Reunión':'Aviso Interno'}</span></div>
-          <div class="detail-row"><span class="dl">Fecha</span><span class="dv">${d.displayDate||'—'}</span></div>
-          <div class="detail-row"><span class="dl">Estatus</span><span class="dv"><span class="badge ${d.status==='firmado'?'badge-firmado':'badge-pendiente'}">${d.status==='firmado'?'Firmado':'Pendiente'}</span></span></div>
-          <div class="detail-row"><span class="dl">Creado</span><span class="dv">${new Date(d.createdAt).toLocaleString('es-MX')}</span></div>
-        </div>
-        <div class="detail-section"><h3>Detalle</h3>
-          ${isM?`
-            <div class="detail-row"><span class="dl">Tipo reunión</span><span class="dv">${d.data?.tipo||'—'}</span></div>
-            <div class="detail-row"><span class="dl">Ubicación</span><span class="dv">${d.data?.ubicacion||'—'}</span></div>
-            <div class="detail-row"><span class="dl">Convocada por</span><span class="dv">${d.data?.convoca||'—'}</span></div>
-            <div class="detail-row"><span class="dl">Objetivo</span><span class="dv">${d.data?.objetivo||'—'}</span></div>
-          `:`
-            <div class="detail-row"><span class="dl">Tipo aviso</span><span class="dv">${d.data?.tipo||'—'}</span></div>
-            <div class="detail-row"><span class="dl">Emitido por</span><span class="dv">${d.data?.emitido||'—'}</span></div>
-            <div class="detail-row"><span class="dl">Dirigido a</span><span class="dv">${d.data?.dirigido||'—'}</span></div>
-            <div class="detail-row"><span class="dl">Asunto</span><span class="dv">${d.data?.asunto||'—'}</span></div>
-          `}
-        </div>
-      </div>`;
-
-  // Evidence section
-  h+='<div class="detail-section" style="margin-top:14px;grid-column:1/-1"><h3>📎 Evidencia Firmada</h3>';
-  if(d.evidence){
-    h+=`<p style="font-size:12px;color:var(--ok);margin-bottom:6px">✅ Documento firmado cargado el ${new Date(d.evidenceDate).toLocaleString('es-MX')}</p>`;
-    if(d.evidence.startsWith('data:image')){
-      h+=`<img src="${d.evidence}" class="evidence-img">`;
-    } else {
-      h+=`<p style="font-size:12px;color:var(--muted)">📄 Archivo PDF cargado</p>`;
-    }
-    h+=`<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}');this.closest('.modal-overlay').remove()">🔄 Reemplazar</button></div>`;
-  } else {
-    h+=`<p style="font-size:12px;color:var(--muted);margin-bottom:8px">No se ha cargado evidencia firmada aún.</p>`;
-    h+=`<button class="btn btn-pri btn-sm" onclick="uploadEvidence('${d.id}');this.closest('.modal-overlay').remove()">📎 Subir evidencia firmada</button>`;
-  }
-  h+='</div>';
-
-  // Status change
-  h+=`<div style="margin-top:14px;display:flex;gap:8px">
-    <button class="btn ${d.status==='firmado'?'btn-ghost':'btn-ok'} btn-sm" onclick="changeStatus('${d.id}','firmado')">✅ Marcar como firmado</button>
-    <button class="btn ${d.status==='pendiente'?'btn-ghost':'btn-warn'} btn-sm" onclick="changeStatus('${d.id}','pendiente')">⏳ Marcar como pendiente</button>
-  </div>`;
-
-  h+=`</div><div class="modal-footer">
-    <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cerrar</button>
-    <button class="btn btn-pri" onclick="downloadDocPDF('${d.id}')">📕 PDF</button>
-    <button class="btn btn-pri" onclick="downloadDocWord('${d.id}')">📄 Word</button>
-  </div></div></div>`;
-  document.body.insertAdjacentHTML('beforeend',h);
-}
-
-function changeStatus(id, status){
-  const docs=loadDocs(); const d=docs.find(x=>x.id===id);
-  if(d){d.status=status;saveDocs(docs);toast(status==='firmado'?'✅ Documento marcado como firmado':'⏳ Documento marcado como pendiente');document.querySelector('.modal-overlay')?.remove();showPage(currentPage);}
-}
-
-function deleteDoc(id){
-  if(!confirm('¿Eliminar este documento permanentemente?'))return;
-  const docs=loadDocs().filter(x=>x.id!==id);saveDocs(docs);toast('🗑️ Documento eliminado','info');showPage(currentPage);
-}
-
-// ══════════════════════════════════════════════════════
-// UPLOAD EVIDENCE (Modal)
-// ══════════════════════════════════════════════════════
-function uploadEvidence(id){
-  let h=`<div class="modal-overlay" onclick="if(event.target===this)this.remove()"><div class="modal" style="max-width:500px">
-    <div class="modal-hdr"><h2>📎 Subir Evidencia Firmada</h2><button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button></div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Sube una foto o escaneo del documento firmado como evidencia.</p>
-      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
-        ondragover="event.preventDefault();this.classList.add('dragover')"
-        ondragleave="this.classList.remove('dragover')"
-        ondrop="event.preventDefault();this.classList.remove('dragover');handleFileDrop(event,'${id}')">
-        <div class="upload-icon">📤</div>
-        <div class="upload-text"><b>Clic para seleccionar</b> o arrastra aquí</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">JPG, PNG o PDF • Máx 5MB</div>
-      </div>
-      <input type="file" id="file-input" accept="image/*,.pdf" style="display:none" onchange="handleFileSelect(this,'${id}')">
-      <div id="file-preview-area"></div>
+  if (docType === 'minuta') {
+    h += `<div class="grid-2">
+      <div class="form-group"><label>Folio</label><input id="f-folio" value="${folioMin}"></div>
+      <div class="form-group"><label>Tipo Reunión</label><select id="f-tipo"><option>Ordinaria</option><option>Extraordinaria</option><option>Seguimiento</option></select></div>
+      <div class="form-group"><label>Fecha *</label><input type="date" id="f-fecha"></div>
+      <div class="form-group"><label>Ubicación</label><input id="f-ubic" value="Sala de juntas – Torre JV"></div>
+      <div class="form-group"><label>Hora Inicio</label><input type="time" id="f-hinicio"></div>
+      <div class="form-group"><label>Hora Fin</label><input type="time" id="f-hfin"></div>
+      <div class="form-group"><label>Convocada por *</label><input id="f-convoca" placeholder="Nombre"></div>
+      <div class="form-group"><label>Elabora</label><input id="f-elabora"></div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
-      <button class="btn btn-ok" id="btn-save-evidence" onclick="saveEvidence('${id}')" disabled>💾 Guardar evidencia</button>
+    <div class="form-group"><label>Objetivo</label><textarea id="f-objetivo" rows="2"></textarea></div>
+    <div class="form-group"><label>Observaciones</label><textarea id="f-obs" rows="3"></textarea></div>`;
+  } else {
+    h += `<div class="grid-2">
+      <div class="form-group"><label>Folio</label><input id="f-afolio" value="${folioAvi}"></div>
+      <div class="form-group"><label>Tipo</label><select id="f-atipo"><option>Informativo</option><option>Cambio operativo</option><option>Política</option><option>Urgente</option></select></div>
+      <div class="form-group"><label>Fecha *</label><input type="date" id="f-afecha"></div>
+      <div class="form-group"><label>Vigencia</label><input id="f-avig"></div>
+      <div class="form-group"><label>Emitido por *</label><input id="f-aemit"></div>
+      <div class="form-group"><label>Dirigido a</label><input id="f-adir" value="Todo el personal"></div>
     </div>
+    <div class="form-group"><label>Asunto *</label><input id="f-aasunto"></div>
+    <div class="form-group"><label>Contenido</label><textarea id="f-acont" rows="4"></textarea></div>`;
+  }
+
+  h += `<div style="margin-top:24px;display:flex;gap:12px;justify-content:center">
+    <button class="btn btn-pri" onclick="saveDoc('pdf')">📕 Guardar y PDF</button>
+    <button class="btn btn-ok" onclick="saveDoc('save')">💾 Solo Guardar</button>
   </div></div>`;
-  document.body.insertAdjacentHTML('beforeend',h);
+
+  document.getElementById('content').innerHTML = h;
 }
 
-let pendingEvidence = null;
+async function saveDoc(mode) {
+  showLoading(true);
+  
+  let doc;
+  if (docType === 'minuta') {
+    const fecha = document.getElementById('f-fecha').value;
+    doc = {
+      id: genId(),
+      type: 'minuta',
+      folio: document.getElementById('f-folio').value,
+      title: 'Minuta ' + document.getElementById('f-tipo').value + ' – ' + fmtDate(fecha),
+      displayDate: fmtDate(fecha),
+      status: 'pendiente',
+      createdAt: Date.now(),
+      data: {
+        tipo: document.getElementById('f-tipo').value,
+        fecha: fecha,
+        hinicio: document.getElementById('f-hinicio').value,
+        hfin: document.getElementById('f-hfin').value,
+        ubicacion: document.getElementById('f-ubic').value,
+        convoca: document.getElementById('f-convoca').value,
+        elabora: document.getElementById('f-elabora').value,
+        objetivo: document.getElementById('f-objetivo').value,
+        observaciones: document.getElementById('f-obs').value
+      }
+    };
+  } else {
+    const fecha = document.getElementById('f-afecha').value;
+    doc = {
+      id: genId(),
+      type: 'aviso',
+      folio: document.getElementById('f-afolio').value,
+      title: document.getElementById('f-aasunto').value || 'Aviso',
+      displayDate: fmtDate(fecha),
+      status: 'pendiente',
+      createdAt: Date.now(),
+      data: {
+        tipo: document.getElementById('f-atipo').value,
+        fecha: fecha,
+        vigencia: document.getElementById('f-avig').value,
+        emitido: document.getElementById('f-aemit').value,
+        dirigido: document.getElementById('f-adir').value,
+        asunto: document.getElementById('f-aasunto').value,
+        contenido: document.getElementById('f-acont').value
+      }
+    };
+  }
 
-function handleFileSelect(input, id){
-  const file=input.files[0]; if(!file)return; processFile(file, id);
-}
-function handleFileDrop(event, id){
-  const file=event.dataTransfer.files[0]; if(!file)return; processFile(file, id);
-}
-function processFile(file, id){
-  if(file.size>5*1024*1024){toast('El archivo es muy grande (máx 5MB)','err');return;}
-  const reader=new FileReader();
-  reader.onload=function(e){
-    pendingEvidence = e.target.result;
-    let preview='';
-    if(file.type.startsWith('image/')){
-      preview=`<div class="file-preview"><img src="${e.target.result}"><div class="info"><div class="name">${file.name}</div><div class="size">${(file.size/1024).toFixed(1)} KB</div></div></div>`;
-    } else {
-      preview=`<div class="file-preview"><div style="font-size:28px">📄</div><div class="info"><div class="name">${file.name}</div><div class="size">${(file.size/1024).toFixed(1)} KB</div></div></div>`;
-    }
-    document.getElementById('file-preview-area').innerHTML=preview;
-    document.getElementById('btn-save-evidence').disabled=false;
-  };
-  reader.readAsDataURL(file);
+  await saveToDrive(doc);
+  documents.push(doc);
+  
+  showLoading(false);
+  
+  if (mode === 'pdf') {
+    generatePDF(doc);
+  }
+  
+  toast('✅ Documento guardado en Drive');
+  setTimeout(() => showPage('dashboard'), 500);
 }
 
-function saveEvidence(id){
-  if(!pendingEvidence)return;
-  const docs=loadDocs(); const d=docs.find(x=>x.id===id);
-  if(d){
-    d.evidence=pendingEvidence;
-    d.evidenceDate=Date.now();
-    d.status='firmado';
-    saveDocs(docs);
-    // Try upload to Drive
-    uploadToDrive(d);
-    toast('✅ Evidencia guardada y documento marcado como firmado');
-    pendingEvidence=null;
-    document.querySelector('.modal-overlay')?.remove();
+// ══════ DELETE & TOGGLE ══════
+async function deleteDoc(id) {
+  if (!confirm('¿Eliminar este documento?')) return;
+  showLoading(true);
+  await deleteFromDrive(id);
+  documents = documents.filter(d => d.id !== id);
+  showLoading(false);
+  toast('🗑️ Eliminado');
+  showPage(currentPage);
+}
+
+async function toggleStatus(id) {
+  const doc = documents.find(d => d.id === id);
+  if (doc) {
+    doc.status = doc.status === 'firmado' ? 'pendiente' : 'firmado';
+    showLoading(true);
+    await saveToDrive(doc);
+    showLoading(false);
+    toast(doc.status === 'firmado' ? '✅ Marcado como firmado' : '⏳ Marcado como pendiente');
     showPage(currentPage);
   }
 }
 
-// ══════════════════════════════════════════════════════
-// GOOGLE DRIVE INTEGRATION
-// ══════════════════════════════════════════════════════
-function renderDrive(){
-  const cfg=loadDriveConfig();
-  let h=`<div class="config-box">
-    <h3>☁️ Conexión con Google Drive</h3>
-    <p>Conecta tu Google Apps Script para que los documentos y evidencias se respalden automáticamente en tu Drive. Usa el mismo patrón del sistema de reclutamiento.</p>
-    <div class="config-status ${cfg.connected?'connected':'disconnected'}">${cfg.connected?'✅ Conectado':'⚪ No conectado'}</div>
-  </div>
-
-  <div class="config-box">
-    <h3>🔗 URL del Web App (Apps Script)</h3>
-    <p>Pega aquí la URL de tu Google Apps Script desplegado como Web App. El script debe aceptar POST con los datos del documento y la evidencia en base64.</p>
-    <div class="fg"><input id="drive-url" value="${cfg.url||''}" placeholder="https://script.google.com/macros/s/AKfycb.../exec" style="font-size:13px"></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-pri btn-sm" onclick="saveDriveURL()">💾 Guardar URL</button>
-      <button class="btn btn-ghost btn-sm" onclick="testDriveConnection()">🧪 Probar conexión</button>
-    </div>
-  </div>
-
-  <div class="config-box">
-    <h3>📋 Código Apps Script</h3>
-    <p>Copia este código en tu proyecto de Google Apps Script. Crea una hoja llamada <b>"Documentos"</b> y una carpeta en Drive para las evidencias.</p>
-    <div style="background:#1a1a2e;border-radius:8px;padding:16px;margin-top:8px;overflow-x:auto">
-      <pre style="color:#e0e0e0;font-size:11px;font-family:'Fira Code',monospace;line-height:1.6;margin:0;white-space:pre-wrap"><code style="color:#a8d8ea">// ═══ ExpertCell - Gestión Documental ═══
-// Configurar estas variables:
-const SHEET_NAME = 'Documentos';
-const FOLDER_ID = 'TU_FOLDER_ID_AQUI'; // ID de la carpeta en Drive
-
-function doPost(e) {
-  try {
-    const data = JSON.parse(e.postData.contents);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = ss.getSheetByName(SHEET_NAME);
-    if (!sheet) {
-      sheet = ss.insertSheet(SHEET_NAME);
-      sheet.appendRow(['ID','Tipo','Folio','Título','Fecha',
-        'Estatus','Creado','URL Evidencia','Datos JSON']);
-      sheet.getRange(1,1,1,9).setFontWeight('bold')
-        .setBackground('#0D4F80').setFontColor('#fff');
-    }
-
-    let evidenceUrl = '';
-    // Si viene evidencia en base64, guardarla en Drive
-    if (data.evidence && data.evidence.startsWith('data:')) {
-      const parts = data.evidence.split(',');
-      const mime = parts[0].match(/:(.*?);/)[1];
-      const bytes = Utilities.base64Decode(parts[1]);
-      const blob = Utilities.newBlob(bytes, mime,
-        data.folio + '_evidencia.' + (mime.includes('pdf')?'pdf':'jpg'));
-      const folder = DriveApp.getFolderById(FOLDER_ID);
-      const file = folder.createFile(blob);
-      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK,
-        DriveApp.Permission.VIEW);
-      evidenceUrl = file.getUrl();
-    }
-
-    // Buscar si ya existe el registro para actualizar
-    const dataRange = sheet.getDataRange().getValues();
-    let rowIndex = -1;
-    for (let i = 1; i &lt; dataRange.length; i++) {
-      if (dataRange[i][0] === data.id) { rowIndex = i + 1; break; }
-    }
-
-    const rowData = [data.id, data.type, data.folio||'',
-      data.title||'', data.displayDate||'', data.status||'',
-      new Date().toLocaleString('es-MX'),
-      evidenceUrl, JSON.stringify(data.data||{})];
-
-    if (rowIndex > 0) {
-      sheet.getRange(rowIndex, 1, 1, 9).setValues([rowData]);
-    } else {
-      sheet.appendRow(rowData);
-    }
-
-    return ContentService.createTextOutput(
-      JSON.stringify({success:true, evidenceUrl}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService.createTextOutput(
-      JSON.stringify({success:false, error:err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function doGet(e) {
-  return ContentService.createTextOutput(
-    JSON.stringify({status:'ok', message:'ExpertCell Docs API activa'}))
-    .setMimeType(ContentService.MimeType.JSON);
-}</code></pre>
-    </div>
-    <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyAppsScript()">📋 Copiar código</button>
-  </div>
-
-  <div class="config-box">
-    <h3>📖 Instrucciones</h3>
-    <ol style="font-size:12px;color:var(--txt);line-height:1.8;padding-left:20px">
-      <li>Abre <b>script.google.com</b> y crea un nuevo proyecto</li>
-      <li>Pega el código de arriba en Code.gs</li>
-      <li>Crea una carpeta en Drive para las evidencias y copia su ID de la URL</li>
-      <li>Reemplaza <b>TU_FOLDER_ID_AQUI</b> con el ID de tu carpeta</li>
-      <li>Implementar → Nueva implementación → App web → Ejecutar como: Yo → Acceso: Cualquier persona</li>
-      <li>Copia la URL generada y pégala arriba</li>
-      <li>Dale clic en "Probar conexión" para verificar</li>
-    </ol>
+// ══════ CONFIG PAGE ══════
+function renderConfig() {
+  let h = `<div class="card">
+    <h3 style="margin-bottom:16px">⚙️ Configuración</h3>
+    <p><strong>URL Apps Script:</strong></p>
+    <p style="font-size:12px;word-break:break-all;color:var(--muted);margin:8px 0">${SCRIPT_URL}</p>
+    <p style="margin-top:16px"><strong>Estado:</strong> ✅ Conectado</p>
+    <p style="margin-top:8px"><strong>Documentos en Drive:</strong> ${documents.length}</p>
+    <button class="btn btn-pri" style="margin-top:16px" onclick="location.reload()">🔄 Recargar datos</button>
   </div>`;
-
-  document.getElementById('page-content').innerHTML=h;
+  document.getElementById('content').innerHTML = h;
 }
 
-function saveDriveURL(){
-  const url=document.getElementById('drive-url').value.trim();
-  saveDriveConfig({url,connected:!!url});
-  toast(url?'✅ URL de Drive guardada':'⚠️ URL removida','info');
-  renderDrive();
-}
-function testDriveConnection(){
-  const cfg=loadDriveConfig();
-  if(!cfg.url){toast('Primero guarda una URL','err');return;}
-  toast('🔄 Probando conexión...','info');
-  fetch(cfg.url).then(r=>r.json()).then(d=>{
-    if(d.status==='ok'){saveDriveConfig({...cfg,connected:true});toast('✅ Conexión exitosa con Drive');renderDrive();}
-    else toast('❌ Error en la respuesta','err');
-  }).catch(e=>{toast('❌ No se pudo conectar: '+e.message,'err');});
-}
-function copyAppsScript(){
-  const code=document.querySelector('.config-box pre code').textContent;
-  navigator.clipboard?.writeText(code).then(()=>toast('📋 Código copiado al portapapeles','info')).catch(()=>toast('No se pudo copiar','err'));
+// ══════ PDF GENERATION ══════
+function downloadPDF(id) {
+  const doc = documents.find(d => d.id === id);
+  if (doc) generatePDF(doc);
 }
 
-function uploadToDrive(docData){
-  const cfg=loadDriveConfig();
-  if(!cfg.url||!cfg.connected)return;
-  fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(docData)}).catch(()=>{});
-}
+function generatePDF(d) {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'letter');
+  const w = 215.9, m = 20;
+  let y = 20;
 
-// ══════════════════════════════════════════════════════
-// NEW DOCUMENT FORM
-// ══════════════════════════════════════════════════════
-let newDocType = 'minuta';
-let formAsistentes=[{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'}];
-let formOrden=[{horario:'',tema:'',responsable:''},{horario:'',tema:'',responsable:''}];
-let formDesarrollo=[{tema:'',descripcion:'',decision:''}];
-let formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatus:'Pendiente'}];
-let formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
-let formAcciones=[{accion:'',responsable:'',fecha:''}];
-let formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+  // Header
+  pdf.setFillColor(13, 79, 128);
+  pdf.rect(0, 0, w, 25, 'F');
+  pdf.setTextColor(255);
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('ExpertCell', m, 16);
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text('Distribuidor Autorizado AT&T', w - m, 16, { align: 'right' });
 
-function resetFormArrays(){
-  formAsistentes=[{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'}];
-  formOrden=[{horario:'',tema:'',responsable:''},{horario:'',tema:'',responsable:''}];
-  formDesarrollo=[{tema:'',descripcion:'',decision:''}];
-  formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatus:'Pendiente'}];
-  formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
-  formAcciones=[{accion:'',responsable:'',fecha:''}];
-  formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
-}
+  y = 35;
+  const dd = d.data || {};
 
-function renderNuevo(){
-  resetFormArrays();
-  let h=`
-  <div style="display:flex;gap:10px;margin-bottom:20px">
-    <button class="btn ${newDocType==='minuta'?'btn-pri':'btn-ghost'}" onclick="newDocType='minuta';renderNuevo()">📋 Minuta Reunión Presencial</button>
-    <button class="btn ${newDocType==='aviso'?'btn-pri':'btn-ghost'}" onclick="newDocType='aviso';renderNuevo()">📢 Aviso / Comunicado Interno</button>
-  </div>
-  <div style="display:flex;gap:22px">
-    <div style="flex:1;min-width:0" id="form-area"></div>
-  </div>`;
-  document.getElementById('page-content').innerHTML=h;
-  renderFormContent();
-}
+  if (d.type === 'minuta') {
+    pdf.setTextColor(13, 79, 128);
+    pdf.setFontSize(18);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('MINUTA DE REUNIÓN', w / 2, y, { align: 'center' });
+    y += 8;
+    pdf.setFontSize(11);
+    pdf.setTextColor(100);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(`${dd.tipo || ''} | Folio: ${d.folio || ''}`, w / 2, y, { align: 'center' });
+    y += 12;
 
-function renderFormContent(){
-  const fa=document.getElementById('form-area');
-  if(!fa)return;
-  let h='';
-  if(newDocType==='minuta'){
-    h+=`<div class="sec-title">📅 Información de la Reunión</div>
-    <div class="grid2">
-      <div class="fg"><label>Tipo</label><select id="f-tipo"><option>Ordinaria</option><option>Extraordinaria</option><option>Seguimiento</option></select></div>
-      <div class="fg"><label>Folio</label><input id="f-folio" value="EC-MIN-${String(loadDocs().filter(d=>d.type==='minuta').length+1).padStart(3,'0')}"></div>
-      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha"></div>
-      <div class="fg"><label>Ubicación</label><input id="f-ubicacion" value="Sala de juntas – Torre JV Juárez"></div>
-      <div class="fg"><label>Hora inicio</label><input type="time" id="f-hinicio"></div>
-      <div class="fg"><label>Hora término</label><input type="time" id="f-hfin"></div>
-      <div class="fg"><label>Convocada por <span class="req">*</span></label><input id="f-convoca" placeholder="Nombre – Cargo"></div>
-      <div class="fg"><label>Elabora minuta</label><input id="f-elabora" placeholder="Nombre"></div>
-    </div>
-    <div class="fg"><label>Objetivo</label><textarea id="f-objetivo" rows="2" placeholder="Propósito de la reunión..."></textarea></div>`;
-
-    h+=`<div class="sec-title">👥 Lista de Asistencia</div><div id="tbl-asist"></div>`;
-    h+=`<div class="sec-title">📝 Orden del Día</div><div id="tbl-orden"></div>`;
-    h+=`<div class="sec-title">💬 Desarrollo</div><div id="tbl-desarrollo"></div>`;
-    h+=`<div class="sec-title">✅ Acuerdos y Compromisos</div><div id="tbl-acuerdos"></div>`;
-
-    h+=`<div class="sec-title">📆 Próxima Reunión</div>
-    <div class="grid2">
-      <div class="fg"><label>Fecha</label><input type="date" id="f-proxfecha"></div>
-      <div class="fg"><label>Hora</label><input type="time" id="f-proxhora"></div>
-    </div>
-    <div class="fg"><label>Lugar</label><input id="f-proxlugar"></div>
-    <div class="fg"><label>Temas pendientes</label><textarea id="f-proxtemas" rows="2"></textarea></div>`;
-
-    h+=`<div class="sec-title">📌 Observaciones</div>
-    <div class="fg"><textarea id="f-obs" rows="3" placeholder="Notas adicionales..."></textarea></div>`;
-
-    h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasM"></div>`;
-  } else {
-    h+=`<div class="sec-title">📋 Datos del Comunicado</div>
-    <div class="grid2">
-      <div class="fg"><label>Tipo</label><select id="f-atipo"><option>Informativo</option><option>Cambio operativo</option><option>Política</option><option>Urgente</option></select></div>
-      <div class="fg"><label>Folio</label><input id="f-afolio" value="EC-AVI-${String(loadDocs().filter(d=>d.type==='aviso').length+1).padStart(3,'0')}"></div>
-      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-afecha"></div>
-      <div class="fg"><label>Vigencia</label><input id="f-avigencia" placeholder="Permanente / Fechas"></div>
-      <div class="fg"><label>Emitido por <span class="req">*</span></label><input id="f-aemitido" placeholder="Nombre – Cargo"></div>
-      <div class="fg"><label>Dirigido a</label><input id="f-adirigido" value="Todo el personal"></div>
-    </div>
-    <div class="fg"><label>Prioridad</label><select id="f-aprioridad"><option>Normal</option><option>Importante</option><option>Urgente</option></select></div>`;
-
-    h+=`<div class="sec-title">📄 Asunto y Contenido</div>
-    <div class="fg"><label>Asunto <span class="req">*</span></label><input id="f-aasunto" placeholder="Título del aviso"></div>
-    <div class="fg"><label>Contenido</label><textarea id="f-acontenido" rows="5" placeholder="Contexto, descripción, impacto, acciones..."></textarea></div>`;
-
-    h+=`<div class="sec-title">⚡ Acciones Requeridas</div><div id="tbl-acciones"></div>`;
-    h+=`<div class="sec-title">📞 Contacto</div>
-    <div class="fg"><label>Contacto para dudas</label><input id="f-acontacto" placeholder="Nombre – Tel / Email"></div>`;
-    h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasA"></div>`;
-  }
-
-  h+=`<div style="padding:20px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-    <button class="btn btn-pri" onclick="saveAndDownload('pdf')" style="padding:14px 32px;font-size:15px">📕 Guardar y Descargar PDF</button>
-    <button class="btn" style="padding:14px 32px;font-size:15px;background:linear-gradient(135deg,#1a5fa8,#2b7fd4);color:#fff" onclick="saveAndDownload('word')">📄 Guardar y Descargar Word</button>
-    <button class="btn btn-ghost" onclick="saveAndDownload('save')" style="padding:14px 32px;font-size:15px">💾 Solo Guardar</button>
-  </div>`;
-
-  fa.innerHTML=h;
-  // Render dynamic tables after DOM update
-  setTimeout(()=>{
-    if(newDocType==='minuta'){
-      renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',ph:'Nombre completo'},{key:'cargo',label:'Cargo',ph:'Cargo/Área'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');
-      renderMiniTable('tbl-orden',[{key:'horario',label:'Horario',ph:'HH:MM'},{key:'tema',label:'Tema',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'}],formOrden,'formOrden');
-      renderMiniTable('tbl-desarrollo',[{key:'tema',label:'Tema',ph:'Tema'},{key:'descripcion',label:'Resumen',ph:'Puntos clave...'},{key:'decision',label:'Decisión',ph:'Decisión'}],formDesarrollo,'formDesarrollo');
-      renderMiniTable('tbl-acuerdos',[{key:'compromiso',label:'Compromiso',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'},{key:'fecha',label:'Fecha',ph:'DD/MM'},{key:'prioridad',label:'Prior.',type:'select',opts:['Alta','Media','Baja']},{key:'estatus',label:'Estatus',type:'select',opts:['Pendiente','En proceso','Completado']}],formAcuerdos,'formAcuerdos');
-      renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasM,'formFirmasM');
-    } else {
-      renderMiniTable('tbl-acciones',[{key:'accion',label:'Acción',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre/Área'},{key:'fecha',label:'Fecha',ph:'DD/MM'}],formAcciones,'formAcciones');
-      renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasA,'formFirmasA');
-    }
-  },0);
-}
-
-function renderMiniTable(containerId, cols, data, ref){
-  const c=document.getElementById(containerId); if(!c)return;
-  let h=`<table class="mini-tbl"><thead><tr><th>#</th>`;
-  cols.forEach(col=>h+=`<th>${col.label}</th>`);
-  h+='<th></th></tr></thead><tbody>';
-  data.forEach((row,i)=>{
-    h+=`<tr><td style="text-align:center;color:var(--muted);font-weight:600;width:28px">${i+1}</td>`;
-    cols.forEach(col=>{
-      if(col.type==='select'){
-        h+='<td><select onchange="updateFormRow(\''+ref+'\','+i+',\''+col.key+'\',this.value)">';
-        col.opts.forEach(o=>h+=`<option${row[col.key]===o?' selected':''}>${o}</option>`);
-        h+='</select></td>';
-      } else {
-        h+=`<td><input value="${row[col.key]||''}" placeholder="${col.ph||''}" oninput="updateFormRow('${ref}',${i},'${col.key}',this.value)"></td>`;
-      }
+    pdf.autoTable({
+      startY: y,
+      margin: { left: m, right: m },
+      theme: 'grid',
+      headStyles: { fillColor: [13, 79, 128] },
+      body: [
+        ['Fecha:', fmtDate(dd.fecha) || '—', 'Horario:', `${dd.hinicio || '—'} - ${dd.hfin || '—'}`],
+        ['Ubicación:', dd.ubicacion || '—', 'Convoca:', dd.convoca || '—'],
+        ['Objetivo:', { content: dd.objetivo || '—', colSpan: 3 }]
+      ]
     });
-    h+=`<td style="width:28px;text-align:center"><button class="btn-rm" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" onclick="removeFormRow('${ref}',${i},'${containerId}','${btoa(JSON.stringify(cols))}')"${data.length<=1?' disabled style="opacity:.3"':''}>✕</button></td></tr>`;
-  });
-  h+=`</tbody></table><button class="btn-add-row" onclick="addFormRow('${ref}','${containerId}','${btoa(JSON.stringify(cols))}')">+ Agregar</button>`;
-  c.innerHTML=h;
-}
+    y = pdf.lastAutoTable.finalY + 10;
 
-function getFormRef(ref){
-  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formFirmasM,formAcciones,formFirmasA};
-  return m[ref];
-}
-function updateFormRow(ref,i,k,v){getFormRef(ref)[i][k]=v;}
-function addFormRow(ref,cid,colsB64){
-  const d=getFormRef(ref);const keys=Object.keys(d[0]);const nr={};keys.forEach(k=>nr[k]='');d.push(nr);
-  const cols=JSON.parse(atob(colsB64));renderMiniTable(cid,cols,d,ref);
-}
-function removeFormRow(ref,i,cid,colsB64){
-  const d=getFormRef(ref);if(d.length>1){d.splice(i,1);const cols=JSON.parse(atob(colsB64));renderMiniTable(cid,cols,d,ref);}
-}
-
-// ══════════════════════════════════════════════════════
-// SAVE DOCUMENT
-// ══════════════════════════════════════════════════════
-function V(id){return document.getElementById(id)?.value||'';}
-function fmtDate(d){if(!d)return'—';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
-
-function collectDocData(){
-  if(newDocType==='minuta'){
-    return {
-      type:'minuta', folio:V('f-folio'), title:`Minuta ${V('f-tipo')} – ${fmtDate(V('f-fecha'))}`,
-      displayDate:fmtDate(V('f-fecha')), status:'pendiente',
-      data:{tipo:V('f-tipo'),fecha:V('f-fecha'),hinicio:V('f-hinicio'),hfin:V('f-hfin'),
-        ubicacion:V('f-ubicacion'),convoca:V('f-convoca'),elabora:V('f-elabora'),objetivo:V('f-objetivo'),
-        asistentes:formAsistentes.filter(a=>a.nombre),orden:formOrden.filter(o=>o.tema),
-        desarrollo:formDesarrollo.filter(d=>d.tema),acuerdos:formAcuerdos.filter(a=>a.compromiso),
-        proxReunion:{fecha:V('f-proxfecha'),hora:V('f-proxhora'),lugar:V('f-proxlugar'),temas:V('f-proxtemas')},
-        observaciones:V('f-obs'),firmas:formFirmasM.filter(f=>f.nombre)}
-    };
+    if (dd.observaciones) {
+      pdf.setFontSize(12);
+      pdf.setTextColor(13, 79, 128);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Observaciones:', m, y);
+      y += 6;
+      pdf.setFontSize(10);
+      pdf.setTextColor(60);
+      pdf.setFont('helvetica', 'normal');
+      const lines = pdf.splitTextToSize(dd.observaciones, w - m * 2);
+      pdf.text(lines, m, y);
+      y += lines.length * 5 + 10;
+    }
   } else {
-    return {
-      type:'aviso', folio:V('f-afolio'), title:V('f-aasunto')||'Aviso sin título',
-      displayDate:fmtDate(V('f-afecha')), status:'pendiente',
-      data:{tipo:V('f-atipo'),fecha:V('f-afecha'),vigencia:V('f-avigencia'),
-        emitido:V('f-aemitido'),dirigido:V('f-adirigido'),prioridad:V('f-aprioridad'),
-        asunto:V('f-aasunto'),contenido:V('f-acontenido'),contacto:V('f-acontacto'),
-        acciones:formAcciones.filter(a=>a.accion),firmas:formFirmasA.filter(f=>f.nombre)}
-    };
+    pdf.setFillColor(13, 79, 128);
+    pdf.roundedRect(m, y, w - m * 2, 20, 3, 3, 'F');
+    pdf.setTextColor(255);
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('AVISO INTERNO', w / 2, y + 13, { align: 'center' });
+    y += 30;
+
+    pdf.autoTable({
+      startY: y,
+      margin: { left: m, right: m },
+      theme: 'grid',
+      headStyles: { fillColor: [13, 79, 128] },
+      columnStyles: { 0: { cellWidth: 40, fillColor: [232, 242, 250], fontStyle: 'bold' } },
+      body: [
+        ['Folio:', d.folio || ''],
+        ['Fecha:', fmtDate(dd.fecha) || '—'],
+        ['Tipo:', dd.tipo || ''],
+        ['Emitido por:', dd.emitido || '—'],
+        ['Dirigido a:', dd.dirigido || '—']
+      ]
+    });
+    y = pdf.lastAutoTable.finalY + 10;
+
+    if (dd.asunto) {
+      pdf.setFontSize(12);
+      pdf.setTextColor(13, 79, 128);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Asunto: ' + dd.asunto, m, y);
+      y += 10;
+    }
+
+    if (dd.contenido) {
+      pdf.setFontSize(10);
+      pdf.setTextColor(60);
+      pdf.setFont('helvetica', 'normal');
+      const lines = pdf.splitTextToSize(dd.contenido, w - m * 2);
+      pdf.text(lines, m, y);
+    }
   }
+
+  // Footer
+  pdf.setFontSize(8);
+  pdf.setTextColor(150);
+  pdf.text(`ExpertCell | ${d.folio || ''} | Generado: ${new Date().toLocaleString('es-MX')}`, w / 2, 270, { align: 'center' });
+
+  pdf.save(`${d.folio || 'documento'}_ExpertCell.pdf`);
 }
 
-function saveAndDownload(mode){
-  const docData=collectDocData();
-  docData.id=genId();docData.createdAt=Date.now();docData.evidence=null;docData.evidenceDate=null;
-  const docs=loadDocs();docs.push(docData);saveDocs(docs);
-  uploadToDrive(docData);
-  if(mode==='pdf') generateDocPDF(docData);
-  else if(mode==='word') generateDocWord(docData);
-  toast('✅ Documento guardado'+(mode!=='save'?' y descargado':''));
-  setTimeout(()=>showPage('dashboard'),500);
+// ══════ INIT ══════
+async function init() {
+  showLoading(true);
+  await loadFromDrive();
+  showLoading(false);
+  showPage('dashboard');
 }
 
-// Download from history
-function downloadDocPDF(id){const docs=loadDocs();const d=docs.find(x=>x.id===id);if(d)generateDocPDF(d);}
-function downloadDocWord(id){const docs=loadDocs();const d=docs.find(x=>x.id===id);if(d)generateDocWord(d);}
-
-// ══════════════════════════════════════════════════════
-// PDF GENERATION
-// ══════════════════════════════════════════════════════
-function generateDocPDF(d){
-  const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','letter');
-  const w=215.9,m=16;let y=6;
-  doc.setFillColor(240,247,252);doc.rect(0,0,w,26,'F');
-  doc.setFillColor(220,238,251);doc.rect(0,18,w,8,'F');
-  doc.setFillColor(200,225,245);doc.rect(0,22,w,4,'F');
-  doc.setFontSize(15);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text('ExpertCell',16,14);
-  doc.setFontSize(8);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text('Distribuidor Autorizado AT&T',w-16,14,{align:'right'});
-  doc.setDrawColor(27,117,187);doc.setLineWidth(0.7);doc.line(0,26,w,26);y=32;
-
-  const dd=d.data||{};
-  const addFooter=(pn)=>{doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,279-16,w-m,279-16);doc.setFontSize(7);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`ExpertCell | ${d.type==='minuta'?'Minuta Presencial':'Comunicado Interno'} | ${d.folio||''} | Pág ${pn}`,w/2,279-11,{align:'center'});};
-  const checkPage=()=>{if(y>245){addFooter(doc.getNumberOfPages());doc.addPage();y=16;return true;}return false;};
-
-  if(d.type==='minuta'){
-    doc.setFontSize(18);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('MINUTA DE REUNIÓN PRESENCIAL',w/2,y+6,{align:'center'});
-    doc.setFontSize(10);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`☑ ${dd.tipo||'Ordinaria'}     Folio: ${d.folio||''}`,w/2,y+13,{align:'center'});
-    doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,y+16,w-m,y+16);y+=22;
-
-    const sec=(title)=>{checkPage();doc.setFontSize(11);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text(title,m,y);y+=5;};
-    const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
-
-    sec('1. Información de la Reunión');
-    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Fecha:',fmtDate(dd.fecha),'Folio:',d.folio||''],['Hora inicio:',dd.hinicio||'—','Hora término:',dd.hfin||'—'],['Ubicación:',{content:dd.ubicacion||'—',colSpan:3}],['Convocada por:',{content:dd.convoca||'—',colSpan:3}],['Objetivo:',{content:dd.objetivo||'—',colSpan:3}]]});y=doc.lastAutoTable.finalY+6;
-
-    if(dd.asistentes?.length){sec('2. Lista de Asistencia');doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Asistencia','Firma']],body:dd.asistentes.map((a,i)=>[i+1,a.nombre,a.cargo,a.asistencia,''])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.orden?.length){sec('3. Orden del Día');doc.autoTable({startY:y,...tblOpts,head:[['Horario','Tema','Responsable']],body:dd.orden.map(o=>[o.horario,o.tema,o.responsable])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.desarrollo?.length){sec('4. Desarrollo');doc.autoTable({startY:y,...tblOpts,head:[['#','Tema','Resumen','Decisión']],body:dd.desarrollo.map((x,i)=>[i+1,x.tema,x.descripcion,x.decision])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.acuerdos?.length){sec('5. Acuerdos');doc.autoTable({startY:y,...tblOpts,head:[['#','Compromiso','Resp.','Fecha','Prior.','Estatus']],body:dd.acuerdos.map((a,i)=>[i+1,a.compromiso,a.responsable,a.fecha,a.prioridad,a.estatus])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.proxReunion?.fecha){sec('6. Próxima Reunión');doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Fecha:',fmtDate(dd.proxReunion.fecha)],['Hora:',dd.proxReunion.hora||'—'],['Lugar:',dd.proxReunion.lugar||'—'],['Pendientes:',dd.proxReunion.temas||'—']]});y=doc.lastAutoTable.finalY+6;}
-    if(dd.observaciones){sec('7. Observaciones');doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(dd.observaciones,w-m*2);doc.text(ls,m,y);y+=ls.length*4.5+4;}
-    if(dd.firmas?.length){checkPage();sec('8. Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre,cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo,cx,y+9,{align:'center'});});}
-  } else {
-    doc.setFillColor(13,79,128);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
-    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('AVISO INTERNO',w/2,y+10,{align:'center'});
-    doc.setFontSize(9);doc.setTextColor(168,209,240);doc.text(`☑ ${dd.tipo||''}   |   Prioridad: ${dd.prioridad||''}`,w/2,y+15.5,{align:'center'});y+=24;
-    const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
-
-    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Vigencia:',dd.vigencia||'—'],['Emitido por:',dd.emitido||'—'],['Dirigido a:',dd.dirigido||'—'],['Prioridad:',dd.prioridad||'']]});y=doc.lastAutoTable.finalY+6;
-
-    if(dd.asunto){doc.setFillColor(27,117,187);doc.roundedRect(m,y,w-m*2,7,1.5,1.5,'F');doc.setFontSize(10);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('ASUNTO',m+4,y+5);y+=9;doc.setFontSize(12);doc.setTextColor(13,79,128);doc.text(dd.asunto,m+4,y+4);y+=10;}
-    if(dd.contenido){doc.setFillColor(27,117,187);doc.roundedRect(m,y,w-m*2,7,1.5,1.5,'F');doc.setFontSize(10);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('CONTENIDO',m+4,y+5);y+=10;doc.setFontSize(10);doc.setTextColor(74,74,74);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(dd.contenido,w-m*2-8);doc.text(ls,m+4,y+2);y+=ls.length*4.5+6;}
-    if(dd.acciones?.length){if(y>220){addFooter(doc.getNumberOfPages());doc.addPage();y=16;}doc.setFillColor(27,117,187);doc.roundedRect(m,y,w-m*2,7,1.5,1.5,'F');doc.setFontSize(10);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('ACCIONES REQUERIDAS',m+4,y+5);y+=9;doc.autoTable({startY:y,...tblOpts,head:[['#','Acción','Responsable','Fecha']],body:dd.acciones.map((a,i)=>[i+1,a.accion,a.responsable,a.fecha])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.contacto){doc.setFillColor(232,242,250);doc.roundedRect(m,y,w-m*2,10,2,2,'F');doc.setFontSize(9);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('ℹ Contacto: ',m+4,y+6.5);doc.setFont('helvetica','normal');doc.setTextColor(74,74,74);doc.text(dd.contacto,m+30,y+6.5);y+=16;}
-    if(dd.firmas?.length){y+=6;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre,cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo,cx,y+9,{align:'center'});});y+=18;}
-    if(y>235){addFooter(doc.getNumberOfPages());doc.addPage();y=16;}
-    doc.setDrawColor(27,117,187);doc.setLineWidth(.6);doc.line(m,y,w-m,y);y+=6;doc.setFontSize(12);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('ACUSE DE RECIBO',w/2,y,{align:'center'});y+=5;doc.setFontSize(9);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text('Confirmo haber leído y comprendido el presente aviso.',w/2,y,{align:'center'});y+=4;
-    doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Firma','Fecha']],body:[[1,'','','',''],[2,'','','',''],[3,'','','',''],[4,'','','',''],[5,'','','',''],[6,'','','','']]});
-  }
-  for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
-  doc.save(`${d.folio||'documento'}_ExpertCell.pdf`);
-}
-
-// ══════════════════════════════════════════════════════
-// WORD GENERATION (HTML-based .doc)
-// ══════════════════════════════════════════════════════
-function generateDocWord(d){
-  const dd=d.data||{};
-  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>
-@page{size:letter;margin:2.5cm 2cm}body{font-family:Arial,sans-serif;color:#4A4A4A;font-size:11pt;line-height:1.4}
-h1{color:#0D4F80;font-size:18pt;text-align:center;margin:0 0 4pt}h2{color:#1B75BB;font-size:12pt;margin:14pt 0 6pt}
-.sub{text-align:center;font-size:10pt;color:#718096;margin:0 0 8pt}.hdr{background:#E8F2FA;padding:8pt 12pt;border-left:4pt solid #1B75BB;margin-bottom:6pt}.hdr span{font-size:14pt;color:#1B75BB;font-weight:bold}
-.line{border-top:2pt solid #1B75BB;margin:6pt 0 10pt}table{width:100%;border-collapse:collapse;margin-bottom:10pt;font-size:10pt}th{background:#0D4F80;color:#fff;padding:5pt 8pt;text-align:left;font-size:9pt}td{padding:4pt 8pt;border:1pt solid #ccc}tr:nth-child(even) td{background:#F5F7FA}
-.lc{background:#E8F2FA;color:#0D4F80;font-weight:bold;width:130pt}.banner{background:#0D4F80;color:#fff;text-align:center;padding:12pt;font-size:18pt;font-weight:bold;margin-bottom:10pt}.banner-s{color:#A8D1F0;font-size:9pt;margin-top:3pt}
-.sec-bar{background:#1B75BB;color:#fff;padding:4pt 10pt;font-weight:bold;font-size:10pt}.contact{background:#E8F2FA;padding:6pt 10pt;border:1pt solid #C5DCF0;margin:8pt 0}
-.fb{display:inline-block;width:30%;text-align:center;margin:20pt 1.5%}.fl{border-bottom:1pt solid #4A4A4A;width:80%;margin:0 auto 4pt}.fn{font-size:10pt;font-weight:bold}.fc{font-size:9pt;color:#718096}
-.footer{border-top:2pt solid #1B75BB;margin-top:16pt;padding-top:4pt;text-align:center;font-size:8pt;color:#718096}
-</style></head><body><div class="hdr"><span>ExpertCell</span></div>`;
-
-  if(d.type==='minuta'){
-    html+=`<h1>MINUTA DE REUNIÓN PRESENCIAL</h1><p class="sub">☑ ${dd.tipo||''} &nbsp; Folio: ${d.folio||''}</p><div class="line"></div>`;
-    html+=`<h2>1. Información</h2><table><tr><td class="lc">Fecha:</td><td>${fmtDate(dd.fecha)}</td><td class="lc">Folio:</td><td>${d.folio||''}</td></tr><tr><td class="lc">Hora inicio:</td><td>${dd.hinicio||'—'}</td><td class="lc">Hora término:</td><td>${dd.hfin||'—'}</td></tr><tr><td class="lc">Ubicación:</td><td colspan="3">${dd.ubicacion||'—'}</td></tr><tr><td class="lc">Convocada por:</td><td colspan="3">${dd.convoca||'—'}</td></tr><tr><td class="lc">Objetivo:</td><td colspan="3">${dd.objetivo||'—'}</td></tr></table>`;
-    if(dd.asistentes?.length){html+=`<h2>2. Lista de Asistencia</h2><table><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Asistencia</th><th>Firma</th></tr>`;dd.asistentes.forEach((a,i)=>html+=`<tr><td>${i+1}</td><td>${a.nombre}</td><td>${a.cargo}</td><td>${a.asistencia}</td><td></td></tr>`);html+='</table>';}
-    if(dd.orden?.length){html+=`<h2>3. Orden del Día</h2><table><tr><th>Horario</th><th>Tema</th><th>Responsable</th></tr>`;dd.orden.forEach(o=>html+=`<tr><td>${o.horario}</td><td>${o.tema}</td><td>${o.responsable}</td></tr>`);html+='</table>';}
-    if(dd.desarrollo?.length){html+=`<h2>4. Desarrollo</h2><table><tr><th>#</th><th>Tema</th><th>Resumen</th><th>Decisión</th></tr>`;dd.desarrollo.forEach((x,i)=>html+=`<tr><td>${i+1}</td><td>${x.tema}</td><td>${x.descripcion}</td><td>${x.decision}</td></tr>`);html+='</table>';}
-    if(dd.acuerdos?.length){html+=`<h2>5. Acuerdos</h2><table><tr><th>#</th><th>Compromiso</th><th>Resp.</th><th>Fecha</th><th>Prioridad</th><th>Estatus</th></tr>`;dd.acuerdos.forEach((a,i)=>html+=`<tr><td>${i+1}</td><td>${a.compromiso}</td><td>${a.responsable}</td><td>${a.fecha}</td><td>${a.prioridad}</td><td>${a.estatus}</td></tr>`);html+='</table>';}
-    if(dd.proxReunion?.fecha){html+=`<h2>6. Próxima Reunión</h2><table><tr><td class="lc">Fecha:</td><td>${fmtDate(dd.proxReunion.fecha)}</td></tr><tr><td class="lc">Hora:</td><td>${dd.proxReunion.hora||'—'}</td></tr><tr><td class="lc">Lugar:</td><td>${dd.proxReunion.lugar||'—'}</td></tr><tr><td class="lc">Pendientes:</td><td>${dd.proxReunion.temas||'—'}</td></tr></table>`;}
-    if(dd.observaciones)html+=`<h2>7. Observaciones</h2><p>${dd.observaciones.replace(/\n/g,'<br>')}</p>`;
-    if(dd.firmas?.length){html+=`<h2>8. Firmas</h2><div style="text-align:center;margin-top:20pt">`;dd.firmas.forEach(f=>html+=`<div class="fb"><div class="fl">&nbsp;<br>&nbsp;</div><div class="fn">${f.nombre}</div><div class="fc">${f.cargo}</div></div>`);html+='</div>';}
-    html+=`<div class="footer">ExpertCell – Distribuidor Autorizado AT&T | Minuta Presencial | ${d.folio||''}</div>`;
-  } else {
-    html+=`<div class="banner">AVISO INTERNO<div class="banner-s">☑ ${dd.tipo||''}  |  Prioridad: ${dd.prioridad||''}</div></div>`;
-    html+=`<table><tr><td class="lc">Folio:</td><td>${d.folio||''}</td></tr><tr><td class="lc">Fecha:</td><td>${fmtDate(dd.fecha)}</td></tr><tr><td class="lc">Vigencia:</td><td>${dd.vigencia||'—'}</td></tr><tr><td class="lc">Emitido por:</td><td>${dd.emitido||'—'}</td></tr><tr><td class="lc">Dirigido a:</td><td>${dd.dirigido||'—'}</td></tr><tr><td class="lc">Prioridad:</td><td>${dd.prioridad||''}</td></tr></table>`;
-    if(dd.asunto)html+=`<div class="sec-bar">ASUNTO</div><p style="font-size:13pt;font-weight:bold;color:#0D4F80;padding:6pt 0">${dd.asunto}</p>`;
-    if(dd.contenido)html+=`<div class="sec-bar">CONTENIDO</div><p style="padding:8pt 0">${dd.contenido.replace(/\n/g,'<br>')}</p>`;
-    if(dd.acciones?.length){html+=`<div class="sec-bar">ACCIONES REQUERIDAS</div><table><tr><th>#</th><th>Acción</th><th>Responsable</th><th>Fecha</th></tr>`;dd.acciones.forEach((a,i)=>html+=`<tr><td>${i+1}</td><td>${a.accion}</td><td>${a.responsable}</td><td>${a.fecha}</td></tr>`);html+='</table>';}
-    if(dd.contacto)html+=`<div class="contact"><b>ℹ Contacto:</b> ${dd.contacto}</div>`;
-    if(dd.firmas?.length){html+=`<div style="text-align:center;margin-top:20pt">`;dd.firmas.forEach(f=>html+=`<div class="fb"><div class="fl">&nbsp;<br>&nbsp;</div><div class="fn">${f.nombre}</div><div class="fc">${f.cargo}</div></div>`);html+='</div>';}
-    html+=`<div class="line"></div><p style="text-align:center;font-size:12pt;color:#0D4F80;font-weight:bold">ACUSE DE RECIBO</p><p style="text-align:center;font-size:9pt;color:#718096">Confirmo haber leído y comprendido el presente aviso.</p>`;
-    html+=`<table><tr><th>#</th><th>Nombre</th><th>Cargo</th><th>Firma</th><th>Fecha</th></tr>`;for(let i=1;i<=6;i++)html+=`<tr><td>${i}</td><td></td><td></td><td></td><td></td></tr>`;html+='</table>';
-    html+=`<div class="footer">ExpertCell – Distribuidor Autorizado AT&T | Comunicado Interno | ${d.folio||''}</div>`;
-  }
-  html+='</body></html>';
-  const blob=new Blob(['\ufeff'+html],{type:'application/msword'});const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=`${d.folio||'documento'}_ExpertCell.doc`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-}
-
-// ═══ INIT ═══
-showPage('dashboard');
+init();
 </script>
 </body>
 </html>
