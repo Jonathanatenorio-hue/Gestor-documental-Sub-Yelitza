@@ -205,7 +205,7 @@ function saveDocs(docs){ localStorage.setItem(STORAGE_KEY, JSON.stringify(docs))
 function genId(){ return 'DOC-'+Date.now().toString(36).toUpperCase()+Math.random().toString(36).substr(2,4).toUpperCase(); }
 
 const DRIVE_KEY = 'ec_drive_config';
-function loadDriveConfig(){ try{return JSON.parse(localStorage.getItem(DRIVE_KEY))||{url:'',connected:false};}catch(e){return{url:'',connected:false};} }
+function loadDriveConfig(){ try{return JSON.parse(localStorage.getItem(DRIVE_KEY))||{url:'https://script.google.com/macros/s/AKfycby6G8R-eL-Q7is-0yqRMQ8mFSP6vhL1KFn6pMp6TEcB77KUeGSlGrTiulOEhKwlmAtw2Q/exec',connected:true};}catch(e){return{url:'https://script.google.com/macros/s/AKfycby6G8R-eL-Q7is-0yqRMQ8mFSP6vhL1KFn6pMp6TEcB77KUeGSlGrTiulOEhKwlmAtw2Q/exec',connected:true};} }
 function saveDriveConfig(cfg){ localStorage.setItem(DRIVE_KEY, JSON.stringify(cfg)); }
 
 // ══════════════════════════════════════════════════════
@@ -929,4 +929,3 @@ showPage('dashboard');
 </script>
 </body>
 </html>
-
