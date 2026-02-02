@@ -175,6 +175,10 @@ table.data-tbl tr:hover td{background:#F7FAFC}
     <div class="sb-section">Historial</div>
     <button class="sb-item" onclick="showPage('minutas')"><span class="icon">📋</span><span>Minutas</span><span class="sb-badge" id="badge-min">0</span></button>
     <button class="sb-item" onclick="showPage('avisos')"><span class="icon">📢</span><span>Avisos</span><span class="sb-badge" id="badge-avi">0</span></button>
+    <button class="sb-item" onclick="showPage('retroalimentaciones')"><span class="icon">💬</span><span>Retroalim.</span><span class="sb-badge" id="badge-ret">0</span></button>
+    <button class="sb-item" onclick="showPage('planes')"><span class="icon">📊</span><span>Planes</span><span class="sb-badge" id="badge-pln">0</span></button>
+    <button class="sb-item" onclick="showPage('actas')"><span class="icon">⚠️</span><span>Actas</span><span class="sb-badge" id="badge-act">0</span></button>
+    <button class="sb-item" onclick="showPage('bajas')"><span class="icon">🚪</span><span>Bajas</span><span class="sb-badge" id="badge-baj">0</span></button>
     <div class="sb-section">Sistema</div>
     <button class="sb-item" onclick="showPage('drive')"><span class="icon">☁️</span><span>Google Drive</span></button>
   </div>
@@ -224,12 +228,12 @@ let currentPage = 'dashboard';
 function showPage(page){
   currentPage = page;
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Historial de Minutas',avisos:'Historial de Avisos',drive:'Configuración Google Drive'};
+  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',actas:'Actas Administrativas',bajas:'Bajas',drive:'Configuración Google Drive'};
   document.getElementById('page-title').textContent = labels[page]||'';
-  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,drive:4};
+  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,actas:6,bajas:7,drive:8};
   if(navMap[page]!==undefined) document.querySelectorAll('.sb-item')[navMap[page]]?.classList.add('active');
   updateBadges();
-  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),drive:renderDrive};
+  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),drive:renderDrive};
   (renderers[page]||renderDashboard)();
 }
 
@@ -237,6 +241,10 @@ function updateBadges(){
   const docs=loadDocs();
   document.getElementById('badge-min').textContent=docs.filter(d=>d.type==='minuta').length;
   document.getElementById('badge-avi').textContent=docs.filter(d=>d.type==='aviso').length;
+  document.getElementById('badge-ret').textContent=docs.filter(d=>d.type==='retroalimentacion').length;
+  document.getElementById('badge-pln').textContent=docs.filter(d=>d.type==='plantrabajo').length;
+  document.getElementById('badge-act').textContent=docs.filter(d=>d.type==='actaadmin').length;
+  document.getElementById('badge-baj').textContent=docs.filter(d=>d.type==='baja').length;
 }
 
 // ══════════════════════════════════════════════════════
@@ -296,22 +304,24 @@ function renderDashboard(){
 // ══════════════════════════════════════════════════════
 function renderHistorial(type){
   const docs=loadDocs().filter(d=>d.type===type).sort((a,b)=>b.createdAt-a.createdAt);
-  const typeName=type==='minuta'?'Minutas':'Avisos';
+  const typeNames={minuta:'Minutas',aviso:'Avisos',retroalimentacion:'Retroalimentaciones',plantrabajo:'Planes de Trabajo',actaadmin:'Actas Administrativas',baja:'Bajas'};
+  const typeIcons={minuta:'📋',aviso:'📢',retroalimentacion:'💬',plantrabajo:'📊',actaadmin:'⚠️',baja:'🚪'};
+  const typeName=typeNames[type]||type;
 
   let h=`<div class="table-wrap">
     <div class="table-toolbar">
       <input class="search-box" placeholder="🔍 Buscar por folio, título..." oninput="filterTable(this.value,'${type}')">
       <select class="filter-sel" onchange="filterByStatus(this.value,'${type}')">
-        <option value="">Todos los estatus</option><option value="firmado">Firmados</option><option value="pendiente">Pendientes</option><option value="borrador">Borradores</option>
+        <option value="">Todos los estatus</option><option value="firmado">Firmados</option><option value="pendiente">Pendientes</option>
       </select>
       <select class="filter-sel" onchange="filterByEvidence(this.value,'${type}')">
         <option value="">Con/Sin evidencia</option><option value="si">Con evidencia</option><option value="no">Sin evidencia</option>
       </select>
-      <div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage('nuevo')">➕ Nuevo ${type==='minuta'?'Minuta':'Aviso'}</button></div>
+      <div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage('nuevo')">➕ Nuevo</button></div>
     </div>`;
 
   if(docs.length===0){
-    h+=`<div class="empty-state"><div class="icon">${type==='minuta'?'📋':'📢'}</div><h3>No hay ${typeName.toLowerCase()} registrad${type==='minuta'?'a':'o'}s</h3><p>Crea ${type==='minuta'?'una minuta':'un aviso'} para comenzar a llevar el historial.</p></div>`;
+    h+=`<div class="empty-state"><div class="icon">${typeIcons[type]||'📄'}</div><h3>No hay ${typeName.toLowerCase()}</h3><p>Crea uno nuevo para comenzar.</p></div>`;
   } else {
     h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
     docs.forEach(d=>{
@@ -660,9 +670,13 @@ function resetFormArrays(){
 function renderNuevo(){
   resetFormArrays();
   let h=`
-  <div style="display:flex;gap:10px;margin-bottom:20px">
-    <button class="btn ${newDocType==='minuta'?'btn-pri':'btn-ghost'}" onclick="newDocType='minuta';renderNuevo()">📋 Minuta Reunión Presencial</button>
-    <button class="btn ${newDocType==='aviso'?'btn-pri':'btn-ghost'}" onclick="newDocType='aviso';renderNuevo()">📢 Aviso / Comunicado Interno</button>
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="btn ${newDocType==='minuta'?'btn-pri':'btn-ghost'}" onclick="newDocType='minuta';renderNuevo()">📋 Minuta</button>
+    <button class="btn ${newDocType==='aviso'?'btn-pri':'btn-ghost'}" onclick="newDocType='aviso';renderNuevo()">📢 Aviso</button>
+    <button class="btn ${newDocType==='retroalimentacion'?'btn-pri':'btn-ghost'}" onclick="newDocType='retroalimentacion';renderNuevo()">💬 Retroalimentación</button>
+    <button class="btn ${newDocType==='plantrabajo'?'btn-pri':'btn-ghost'}" onclick="newDocType='plantrabajo';renderNuevo()">📊 Plan de Trabajo</button>
+    <button class="btn ${newDocType==='actaadmin'?'btn-pri':'btn-ghost'}" onclick="newDocType='actaadmin';renderNuevo()">⚠️ Acta Administrativa</button>
+    <button class="btn ${newDocType==='baja'?'btn-pri':'btn-ghost'}" onclick="newDocType='baja';renderNuevo()">🚪 Baja</button>
   </div>
   <div style="display:flex;gap:22px">
     <div style="flex:1;min-width:0" id="form-area"></div>
@@ -678,16 +692,17 @@ function renderFormContent(){
   if(newDocType==='minuta'){
     h+=`<div class="sec-title">📅 Información de la Reunión</div>
     <div class="grid2">
-      <div class="fg"><label>Tipo</label><select id="f-tipo"><option>Ordinaria</option><option>Extraordinaria</option><option>Seguimiento</option></select></div>
+      <div class="fg"><label>Tipo</label><select id="f-tipo"><option>Dinamicas</option><option>Operación</option><option>Administrativo</option><option>Comunicados generales</option><option>Pagos</option></select></div>
       <div class="fg"><label>Folio</label><input id="f-folio" value="EC-MIN-${String(loadDocs().filter(d=>d.type==='minuta').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha"></div>
-      <div class="fg"><label>Ubicación</label><input id="f-ubicacion" value="Sala de juntas – Torre JV Juárez"></div>
+      <div class="fg"><label>Ubicación</label><select id="f-ubicacion"><option>Celula Neza</option><option>Celula Atlixco</option><option>Sub Yelitza Orsuna</option></select></div>
       <div class="fg"><label>Hora inicio</label><input type="time" id="f-hinicio"></div>
       <div class="fg"><label>Hora término</label><input type="time" id="f-hfin"></div>
       <div class="fg"><label>Convocada por <span class="req">*</span></label><input id="f-convoca" placeholder="Nombre – Cargo"></div>
       <div class="fg"><label>Elabora minuta</label><input id="f-elabora" placeholder="Nombre"></div>
     </div>
-    <div class="fg"><label>Objetivo</label><textarea id="f-objetivo" rows="2" placeholder="Propósito de la reunión..."></textarea></div>`;
+    <div class="fg"><label>Objetivo</label><textarea id="f-objetivo" rows="2" placeholder="Propósito de la reunión..."></textarea></div>
+    <div class="fg"><label>Descripción</label><textarea id="f-descripcion" rows="4" placeholder="Redacta el tema de la minuta..."></textarea></div>`;
 
     h+=`<div class="sec-title">👥 Lista de Asistencia</div><div id="tbl-asist"></div>`;
     h+=`<div class="sec-title">📝 Orden del Día</div><div id="tbl-orden"></div>`;
@@ -709,12 +724,12 @@ function renderFormContent(){
   } else {
     h+=`<div class="sec-title">📋 Datos del Comunicado</div>
     <div class="grid2">
-      <div class="fg"><label>Tipo</label><select id="f-atipo"><option>Informativo</option><option>Cambio operativo</option><option>Política</option><option>Urgente</option></select></div>
+      <div class="fg"><label>Tipo</label><select id="f-atipo"><option>Informativo</option><option>Cambio operativo</option><option>Política</option><option>Urgente</option><option>Oferta comercial</option><option>Dinamicas</option><option>Otros</option></select></div>
       <div class="fg"><label>Folio</label><input id="f-afolio" value="EC-AVI-${String(loadDocs().filter(d=>d.type==='aviso').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-afecha"></div>
       <div class="fg"><label>Vigencia</label><input id="f-avigencia" placeholder="Permanente / Fechas"></div>
       <div class="fg"><label>Emitido por <span class="req">*</span></label><input id="f-aemitido" placeholder="Nombre – Cargo"></div>
-      <div class="fg"><label>Dirigido a</label><input id="f-adirigido" value="Todo el personal"></div>
+      <div class="fg"><label>Dirigido a</label><select id="f-adirigido"><option>Todo el personal</option><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option><option>Agentes de ventas</option></select></div>
     </div>
     <div class="fg"><label>Prioridad</label><select id="f-aprioridad"><option>Normal</option><option>Importante</option><option>Urgente</option></select></div>`;
 
@@ -726,6 +741,67 @@ function renderFormContent(){
     h+=`<div class="sec-title">📞 Contacto</div>
     <div class="fg"><label>Contacto para dudas</label><input id="f-acontacto" placeholder="Nombre – Tel / Email"></div>`;
     h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasA"></div>`;
+  } else if(newDocType==='retroalimentacion'){
+    h+=`<div class="sec-title">💬 Retroalimentación</div>
+    <div class="grid2">
+      <div class="fg"><label>Folio</label><input id="f-rfolio" value="EC-RET-${String(loadDocs().filter(d=>d.type==='retroalimentacion').length+1).padStart(3,'0')}"></div>
+      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-rfecha"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-rcolaborador" placeholder="Nombre del colaborador"></div>
+      <div class="fg"><label>Puesto</label><input id="f-rpuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Área</label><select id="f-rarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
+      <div class="fg"><label>Supervisor</label><input id="f-rsupervisor" placeholder="Nombre del supervisor"></div>
+    </div>
+    <div class="fg"><label>Tipo de Retroalimentación</label><select id="f-rtipo"><option>Positiva</option><option>Correctiva</option><option>Desarrollo</option></select></div>
+    <div class="fg"><label>Motivo / Situación</label><textarea id="f-rmotivo" rows="3" placeholder="Describe la situación..."></textarea></div>
+    <div class="fg"><label>Retroalimentación</label><textarea id="f-rcontenido" rows="4" placeholder="Detalle de la retroalimentación..."></textarea></div>
+    <div class="fg"><label>Compromisos</label><textarea id="f-rcompromisos" rows="3" placeholder="Compromisos acordados..."></textarea></div>
+    <div class="fg"><label>Seguimiento</label><input id="f-rseguimiento" placeholder="Fecha o acciones de seguimiento"></div>`;
+  } else if(newDocType==='plantrabajo'){
+    h+=`<div class="sec-title">📊 Plan de Trabajo</div>
+    <div class="grid2">
+      <div class="fg"><label>Folio</label><input id="f-pfolio" value="EC-PLN-${String(loadDocs().filter(d=>d.type==='plantrabajo').length+1).padStart(3,'0')}"></div>
+      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-pfecha"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-pcolaborador" placeholder="Nombre del colaborador"></div>
+      <div class="fg"><label>Puesto</label><input id="f-ppuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Área</label><select id="f-parea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
+      <div class="fg"><label>Supervisor</label><input id="f-psupervisor" placeholder="Nombre del supervisor"></div>
+    </div>
+    <div class="fg"><label>Periodo</label><input id="f-pperiodo" placeholder="Ej: Febrero 2026"></div>
+    <div class="fg"><label>Objetivo del Plan</label><textarea id="f-pobjetivo" rows="3" placeholder="Objetivo principal..."></textarea></div>
+    <div class="fg"><label>Actividades / Metas</label><textarea id="f-pactividades" rows="4" placeholder="Lista de actividades y metas..."></textarea></div>
+    <div class="fg"><label>Indicadores de Éxito</label><textarea id="f-pindicadores" rows="3" placeholder="Cómo se medirá el éxito..."></textarea></div>
+    <div class="fg"><label>Fecha de Revisión</label><input type="date" id="f-prevision"></div>`;
+  } else if(newDocType==='actaadmin'){
+    h+=`<div class="sec-title">⚠️ Acta Administrativa</div>
+    <div class="grid2">
+      <div class="fg"><label>Folio</label><input id="f-aafolio" value="EC-ACT-${String(loadDocs().filter(d=>d.type==='actaadmin').length+1).padStart(3,'0')}"></div>
+      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-aafecha"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-aacolaborador" placeholder="Nombre del colaborador"></div>
+      <div class="fg"><label>Puesto</label><input id="f-aapuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Área</label><select id="f-aaarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
+      <div class="fg"><label>Antigüedad</label><input id="f-aaantiguedad" placeholder="Tiempo en la empresa"></div>
+    </div>
+    <div class="fg"><label>Tipo de Falta</label><select id="f-aatipo"><option>Falta leve</option><option>Falta grave</option><option>Falta muy grave</option></select></div>
+    <div class="fg"><label>Número de Incidencia</label><select id="f-aanumero"><option>Primera</option><option>Segunda</option><option>Tercera</option></select></div>
+    <div class="fg"><label>Descripción de los Hechos</label><textarea id="f-aahechos" rows="4" placeholder="Descripción detallada de los hechos..."></textarea></div>
+    <div class="fg"><label>Fundamento / Normativa</label><textarea id="f-aafundamento" rows="2" placeholder="Artículos o políticas que se incumplen..."></textarea></div>
+    <div class="fg"><label>Sanción Aplicada</label><textarea id="f-aasancion" rows="2" placeholder="Sanción que se aplica..."></textarea></div>
+    <div class="fg"><label>Compromiso del Colaborador</label><textarea id="f-aacompromiso" rows="2" placeholder="Compromiso del colaborador..."></textarea></div>`;
+  } else if(newDocType==='baja'){
+    h+=`<div class="sec-title">🚪 Baja de Personal</div>
+    <div class="grid2">
+      <div class="fg"><label>Folio</label><input id="f-bfolio" value="EC-BAJ-${String(loadDocs().filter(d=>d.type==='baja').length+1).padStart(3,'0')}"></div>
+      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-bfecha"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-bcolaborador" placeholder="Nombre del colaborador"></div>
+      <div class="fg"><label>Puesto</label><input id="f-bpuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Área</label><select id="f-barea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
+      <div class="fg"><label>Fecha de Ingreso</label><input type="date" id="f-bingreso"></div>
+    </div>
+    <div class="fg"><label>Tipo de Baja</label><select id="f-btipo"><option>Renuncia voluntaria</option><option>Rescisión de contrato</option><option>Término de contrato</option><option>Abandono de trabajo</option><option>Jubilación</option></select></div>
+    <div class="fg"><label>Último Día Laborado</label><input type="date" id="f-bultimo"></div>
+    <div class="fg"><label>Motivo de la Baja</label><textarea id="f-bmotivo" rows="3" placeholder="Motivo de la baja..."></textarea></div>
+    <div class="fg"><label>Observaciones</label><textarea id="f-bobs" rows="3" placeholder="Observaciones adicionales..."></textarea></div>
+    <div class="fg"><label>Entrega de Equipo/Materiales</label><textarea id="f-bentrega" rows="2" placeholder="Lista de equipo entregado..."></textarea></div>`;
   }
 
   h+=`<div style="padding:20px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
@@ -798,12 +874,13 @@ function collectDocData(){
       displayDate:fmtDate(V('f-fecha')), status:'pendiente',
       data:{tipo:V('f-tipo'),fecha:V('f-fecha'),hinicio:V('f-hinicio'),hfin:V('f-hfin'),
         ubicacion:V('f-ubicacion'),convoca:V('f-convoca'),elabora:V('f-elabora'),objetivo:V('f-objetivo'),
+        descripcion:V('f-descripcion'),
         asistentes:formAsistentes.filter(a=>a.nombre),orden:formOrden.filter(o=>o.tema),
         desarrollo:formDesarrollo.filter(d=>d.tema),acuerdos:formAcuerdos.filter(a=>a.compromiso),
         proxReunion:{fecha:V('f-proxfecha'),hora:V('f-proxhora'),lugar:V('f-proxlugar'),temas:V('f-proxtemas')},
         observaciones:V('f-obs'),firmas:formFirmasM.filter(f=>f.nombre)}
     };
-  } else {
+  } else if(newDocType==='aviso'){
     return {
       type:'aviso', folio:V('f-afolio'), title:V('f-aasunto')||'Aviso sin título',
       displayDate:fmtDate(V('f-afecha')), status:'pendiente',
@@ -811,6 +888,38 @@ function collectDocData(){
         emitido:V('f-aemitido'),dirigido:V('f-adirigido'),prioridad:V('f-aprioridad'),
         asunto:V('f-aasunto'),contenido:V('f-acontenido'),contacto:V('f-acontacto'),
         acciones:formAcciones.filter(a=>a.accion),firmas:formFirmasA.filter(f=>f.nombre)}
+    };
+  } else if(newDocType==='retroalimentacion'){
+    return {
+      type:'retroalimentacion', folio:V('f-rfolio'), title:`Retroalimentación – ${V('f-rcolaborador')}`,
+      displayDate:fmtDate(V('f-rfecha')), status:'pendiente',
+      data:{fecha:V('f-rfecha'),colaborador:V('f-rcolaborador'),puesto:V('f-rpuesto'),
+        area:V('f-rarea'),supervisor:V('f-rsupervisor'),tipo:V('f-rtipo'),
+        motivo:V('f-rmotivo'),contenido:V('f-rcontenido'),compromisos:V('f-rcompromisos'),seguimiento:V('f-rseguimiento')}
+    };
+  } else if(newDocType==='plantrabajo'){
+    return {
+      type:'plantrabajo', folio:V('f-pfolio'), title:`Plan de Trabajo – ${V('f-pcolaborador')}`,
+      displayDate:fmtDate(V('f-pfecha')), status:'pendiente',
+      data:{fecha:V('f-pfecha'),colaborador:V('f-pcolaborador'),puesto:V('f-ppuesto'),
+        area:V('f-parea'),supervisor:V('f-psupervisor'),periodo:V('f-pperiodo'),
+        objetivo:V('f-pobjetivo'),actividades:V('f-pactividades'),indicadores:V('f-pindicadores'),revision:V('f-prevision')}
+    };
+  } else if(newDocType==='actaadmin'){
+    return {
+      type:'actaadmin', folio:V('f-aafolio'), title:`Acta Administrativa – ${V('f-aacolaborador')}`,
+      displayDate:fmtDate(V('f-aafecha')), status:'pendiente',
+      data:{fecha:V('f-aafecha'),colaborador:V('f-aacolaborador'),puesto:V('f-aapuesto'),
+        area:V('f-aaarea'),antiguedad:V('f-aaantiguedad'),tipoFalta:V('f-aatipo'),numero:V('f-aanumero'),
+        hechos:V('f-aahechos'),fundamento:V('f-aafundamento'),sancion:V('f-aasancion'),compromiso:V('f-aacompromiso')}
+    };
+  } else if(newDocType==='baja'){
+    return {
+      type:'baja', folio:V('f-bfolio'), title:`Baja – ${V('f-bcolaborador')}`,
+      displayDate:fmtDate(V('f-bfecha')), status:'pendiente',
+      data:{fecha:V('f-bfecha'),colaborador:V('f-bcolaborador'),puesto:V('f-bpuesto'),
+        area:V('f-barea'),ingreso:V('f-bingreso'),tipo:V('f-btipo'),ultimo:V('f-bultimo'),
+        motivo:V('f-bmotivo'),observaciones:V('f-bobs'),entrega:V('f-bentrega')}
     };
   }
 }
