@@ -721,7 +721,7 @@ function renderFormContent(){
     <div class="fg"><textarea id="f-obs" rows="3" placeholder="Notas adicionales..."></textarea></div>`;
 
     h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasM"></div>`;
-  } else {
+  } else if(newDocType==='aviso'){
     h+=`<div class="sec-title">📋 Datos del Comunicado</div>
     <div class="grid2">
       <div class="fg"><label>Tipo</label><select id="f-atipo"><option>Informativo</option><option>Cambio operativo</option><option>Política</option><option>Urgente</option><option>Oferta comercial</option><option>Dinamicas</option><option>Otros</option></select></div>
