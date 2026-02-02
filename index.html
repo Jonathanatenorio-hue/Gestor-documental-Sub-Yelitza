@@ -483,13 +483,19 @@ function saveEvidence(id){
     d.evidenceDate=Date.now();
     d.status='firmado';
     saveDocs(docs);
-    // Try upload to Drive
-    uploadToDrive(d);
+    // Upload evidence to Drive folder
+    uploadEvidenceToDrive(id, pendingEvidence, d.folio);
     toast('✅ Evidencia guardada y documento marcado como firmado');
     pendingEvidence=null;
     document.querySelector('.modal-overlay')?.remove();
     showPage(currentPage);
   }
+}
+
+function uploadEvidenceToDrive(docId, base64, folio){
+  const cfg=loadDriveConfig();
+  if(!cfg.url||!cfg.connected)return;
+  fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'uploadEvidence',id:docId,evidence:base64,fileName:folio+'_evidencia'})}).catch(()=>{});
 }
 
 // ══════════════════════════════════════════════════════
