@@ -1155,8 +1155,38 @@ h1{color:#0D4F80;font-size:18pt;text-align:center;margin:0 0 4pt}h2{color:#1B75B
   const a=document.createElement('a');a.href=url;a.download=`${d.folio||'documento'}_ExpertCell.doc`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 
+// ═══ SYNC FROM DRIVE ═══
+async function syncFromDrive(){
+  const cfg = loadDriveConfig();
+  if(!cfg.url || !cfg.connected) return;
+  try {
+    const response = await fetch(cfg.url + '?action=getAll');
+    const data = await response.json();
+    if(data.success && data.documents){
+      // Merge Drive docs with local, Drive wins for conflicts
+      const localDocs = loadDocs();
+      const localIds = new Set(localDocs.map(d => d.id));
+      const driveDocs = data.documents;
+      
+      // Add docs from Drive that aren't local
+      driveDocs.forEach(dd => {
+        if(!localIds.has(dd.id)){
+          localDocs.push(dd);
+        }
+      });
+      
+      saveDocs(localDocs);
+      updateBadges();
+      if(currentPage === 'dashboard') renderDashboard();
+    }
+  } catch(e) {
+    console.log('Sync error:', e);
+  }
+}
+
 // ═══ INIT ═══
 showPage('dashboard');
+syncFromDrive();
 </script>
 </body>
 </html>
