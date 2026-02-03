@@ -277,7 +277,7 @@ function renderDashboard(){
       const typeClass = d.type==='minuta'?'badge-minuta':'badge-aviso';
       const typeName = d.type==='minuta'?'Minuta':'Aviso';
       const statusClass = d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
-      const evid = d.evidence?`<span class="evidence-indicator evidence-yes">✅ Sí</span>`:`<span class="evidence-indicator evidence-no">— No</span>`;
+      const evid = (d.evidence||d.evidenceUrl)?`<span class="evidence-indicator evidence-yes">✅ Sí</span>`:`<span class="evidence-indicator evidence-no">— No</span>`;
       h+=`<tr>
         <td><strong>${d.folio||'—'}</strong></td>
         <td><span class="badge ${typeClass}">${typeName}</span></td>
@@ -326,8 +326,8 @@ function renderHistorial(type){
     h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
     docs.forEach(d=>{
       const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
-      const ev=d.evidence?'<span class="evidence-indicator evidence-yes">✅ Sí</span>':'<span class="evidence-indicator evidence-no">— No</span>';
-      h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${d.evidence?'si':'no'}">
+      const ev=(d.evidence||d.evidenceUrl)?'<span class="evidence-indicator evidence-yes">✅ Sí</span>':'<span class="evidence-indicator evidence-no">— No</span>';
+      h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${(d.evidence||d.evidenceUrl)?'si':'no'}">
         <td><strong>${d.folio||'—'}</strong></td><td>${d.title||'—'}</td><td>${d.displayDate||'—'}</td>
         <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
         <td>${ev}</td>
@@ -1164,7 +1164,17 @@ async function syncFromDrive(){
     const data = await response.json();
     if(data.success && data.documents){
       // Drive is source of truth - replace local with Drive data
-      const driveDocs = data.documents;
+      const driveDocs = data.documents.map(d => {
+        // Map evidenceUrl to evidence for display
+        if(d.evidenceUrl && !d.evidence){
+          d.evidence = d.evidenceUrl;
+        }
+        // Ensure status is set based on evidence
+        if(d.evidenceUrl || d.evidence){
+          d.status = 'firmado';
+        }
+        return d;
+      });
       const localDocs = loadDocs();
       
       // Create map of drive docs by ID
