@@ -74,6 +74,10 @@ table.data-tbl tr:hover td{background:#F7FAFC}
 .badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
 .badge-minuta{background:var(--lt);color:var(--pri)}
 .badge-aviso{background:var(--warnlt);color:var(--warn)}
+.badge-ret{background:#E8F5E9;color:#2E7D32}
+.badge-pln{background:#E3F2FD;color:#1565C0}
+.badge-acta{background:#FFEBEE;color:#C62828}
+.badge-baja{background:#F3E5F5;color:#7B1FA2}
 .badge-firmado{background:var(--oklt);color:var(--ok)}
 .badge-pendiente{background:var(--warnlt);color:var(--warn)}
 .badge-borrador{background:#F1F1F1;color:#888}
@@ -274,8 +278,10 @@ function renderDashboard(){
     const recent = docs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,8);
     h+=`<table class="data-tbl"><thead><tr><th>Folio</th><th>Tipo</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
     recent.forEach(d=>{
-      const typeClass = d.type==='minuta'?'badge-minuta':'badge-aviso';
-      const typeName = d.type==='minuta'?'Minuta':'Aviso';
+      const typeNames = {minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalim.',plantrabajo:'Plan Trabajo',actaadmin:'Acta Admin.',baja:'Baja'};
+      const typeClasses = {minuta:'badge-minuta',aviso:'badge-aviso',retroalimentacion:'badge-ret',plantrabajo:'badge-pln',actaadmin:'badge-acta',baja:'badge-baja'};
+      const typeClass = typeClasses[d.type]||'badge-aviso';
+      const typeName = typeNames[d.type]||d.type;
       const statusClass = d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
       const evid = (d.evidence||d.evidenceUrl)?`<span class="evidence-indicator evidence-yes">✅ Sí</span>`:`<span class="evidence-indicator evidence-no">— No</span>`;
       h+=`<tr>
@@ -552,6 +558,112 @@ function removeAnexo(i){
 }
 
 // ══════════════════════════════════════════════════════
+// EVALUACIÓN DE LLAMADAS
+// ══════════════════════════════════════════════════════
+function toggleEvalLlamada(){
+  const tipo = document.getElementById('f-rtipo')?.value;
+  const evalSection = document.getElementById('eval-llamada-section');
+  const normalSection = document.getElementById('retro-normal-section');
+  if(evalSection && normalSection){
+    if(tipo === 'Evaluación de llamada'){
+      evalSection.style.display = 'block';
+      normalSection.style.display = 'none';
+    } else {
+      evalSection.style.display = 'none';
+      normalSection.style.display = 'block';
+    }
+  }
+}
+
+function calcularEval(){
+  const campos = ['saludo','tono','sondeo','objeciones','cierre','valorizacion','monetizacion','producto','fluidez'];
+  let total = 0;
+  campos.forEach(c => {
+    const el = document.getElementById('f-eval-'+c);
+    if(el) total += parseInt(el.value)||0;
+  });
+  const totalEl = document.getElementById('eval-total');
+  const totalBigEl = document.getElementById('eval-total-big');
+  if(totalEl) totalEl.textContent = total;
+  if(totalBigEl){
+    totalBigEl.textContent = total + '%';
+    totalBigEl.style.color = total >= 80 ? 'var(--ok)' : total >= 60 ? 'var(--warn)' : 'var(--red)';
+  }
+  return total;
+}
+
+// ══════════════════════════════════════════════════════
+// CÁLCULO FINIQUITO
+// ══════════════════════════════════════════════════════
+function calcularFiniquito(){
+  const sueldo = parseFloat(document.getElementById('f-bsueldo')?.value)||0;
+  const dias = parseFloat(document.getElementById('f-bdias')?.value)||0;
+  const vacaciones = parseFloat(document.getElementById('f-bvacaciones')?.value)||0;
+  const aguinaldo = parseFloat(document.getElementById('f-baguinaldo')?.value)||0;
+  const primaPct = parseFloat(document.getElementById('f-bprima')?.value)||25;
+  const comisiones = parseFloat(document.getElementById('f-bcomisiones')?.value)||0;
+  const otros = parseFloat(document.getElementById('f-botros')?.value)||0;
+  
+  const montoDias = dias * sueldo;
+  const montoVac = vacaciones * sueldo;
+  const montoAgui = aguinaldo * sueldo;
+  const montoPrima = montoVac * (primaPct/100);
+  const total = montoDias + montoVac + montoAgui + montoPrima + comisiones + otros;
+  
+  document.getElementById('f-bdiasmon').value = '$' + montoDias.toFixed(2);
+  document.getElementById('f-bvacmon').value = '$' + montoVac.toFixed(2);
+  document.getElementById('f-baguimon').value = '$' + montoAgui.toFixed(2);
+  document.getElementById('f-bprimamon').value = '$' + montoPrima.toFixed(2);
+  document.getElementById('f-btotal').textContent = '$' + total.toFixed(2);
+  
+  return {montoDias, montoVac, montoAgui, montoPrima, comisiones, otros, total};
+}
+
+// ══════════════════════════════════════════════════════
+// DOCUMENTOS BAJA
+// ══════════════════════════════════════════════════════
+let docsBajaData = [];
+
+function handleDocsBaja(input){
+  const files = input.files;
+  if(!files.length) return;
+  
+  Array.from(files).forEach(file => {
+    if(file.size > 5*1024*1024){
+      toast('Archivo muy grande (máx 5MB)', 'err');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      docsBajaData.push({name: file.name, data: e.target.result, type: file.type});
+      renderDocsBajaPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderDocsBajaPreview(){
+  const container = document.getElementById('docs-baja-preview');
+  if(!container) return;
+  let h = '';
+  docsBajaData.forEach((doc, i) => {
+    const icon = doc.type.includes('pdf') ? '📄' : '🖼️';
+    h += `<div class="file-preview" style="margin-bottom:8px">
+      <span style="font-size:24px">${icon}</span>
+      <div class="info"><div class="name">${doc.name}</div></div>
+      <button type="button" onclick="removeDocBaja(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px">✕</button>
+    </div>`;
+  });
+  container.innerHTML = h;
+}
+
+function removeDocBaja(i){
+  docsBajaData.splice(i, 1);
+  renderDocsBajaPreview();
+}
+
+// ══════════════════════════════════════════════════════
 // GOOGLE DRIVE INTEGRATION
 // ══════════════════════════════════════════════════════
 function renderDrive(){
@@ -713,6 +825,7 @@ function resetFormArrays(){
 function renderNuevo(){
   resetFormArrays();
   anexosData = [];
+  docsBajaData = [];
   let h=`
   <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
     <button class="btn ${newDocType==='minuta'?'btn-pri':'btn-ghost'}" onclick="newDocType='minuta';renderNuevo()">📋 Minuta</button>
@@ -749,7 +862,6 @@ function renderFormContent(){
     <div class="fg"><label>Descripción</label><textarea id="f-descripcion" rows="4" placeholder="Redacta el tema de la minuta..."></textarea></div>`;
 
     h+=`<div class="sec-title">👥 Lista de Asistencia</div><div id="tbl-asist"></div>`;
-    h+=`<div class="sec-title">📝 Orden del Día</div><div id="tbl-orden"></div>`;
     h+=`<div class="sec-title">💬 Desarrollo</div><div id="tbl-desarrollo"></div>`;
     h+=`<div class="sec-title">✅ Acuerdos y Compromisos</div><div id="tbl-acuerdos"></div>`;
 
@@ -817,11 +929,42 @@ function renderFormContent(){
       <div class="fg"><label>Área</label><select id="f-rarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
       <div class="fg"><label>Supervisor</label><input id="f-rsupervisor" placeholder="Nombre del supervisor"></div>
     </div>
-    <div class="fg"><label>Tipo de Retroalimentación</label><select id="f-rtipo"><option>Positiva</option><option>Correctiva</option><option>Desarrollo</option></select></div>
-    <div class="fg"><label>Motivo / Situación</label><textarea id="f-rmotivo" rows="3" placeholder="Describe la situación..."></textarea></div>
-    <div class="fg"><label>Retroalimentación</label><textarea id="f-rcontenido" rows="4" placeholder="Detalle de la retroalimentación..."></textarea></div>
-    <div class="fg"><label>Compromisos</label><textarea id="f-rcompromisos" rows="3" placeholder="Compromisos acordados..."></textarea></div>
-    <div class="fg"><label>Seguimiento</label><input id="f-rseguimiento" placeholder="Fecha o acciones de seguimiento"></div>`;
+    <div class="fg"><label>Tipo de Retroalimentación</label><select id="f-rtipo" onchange="toggleEvalLlamada()"><option>Positiva</option><option>Correctiva</option><option>Desarrollo</option><option>Evaluación de llamada</option></select></div>
+    
+    <div id="eval-llamada-section" style="display:none">
+      <div class="sec-title">📞 Datos de la Llamada</div>
+      <div class="grid2">
+        <div class="fg"><label>Tiempo de llamada</label><input id="f-rtiempollamada" placeholder="Ej: 5:32 min"></div>
+        <div class="fg"><label>Número marcado</label><input id="f-rnumero" placeholder="Teléfono"></div>
+        <div class="fg"><label>Tipificación</label><input id="f-rtipificacion" placeholder="Resultado de la llamada"></div>
+      </div>
+      
+      <div class="sec-title">📊 Evaluación de Calidad (Total: <span id="eval-total">0</span>%)</div>
+      <div style="background:#f8f9fa;padding:12px;border-radius:8px;margin-bottom:12px">
+        <div class="grid2">
+          <div class="fg"><label>Saludo (10%)</label><select id="f-eval-saludo" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
+          <div class="fg"><label>Tono de voz (10%)</label><select id="f-eval-tono" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
+          <div class="fg"><label>Sondeo de necesidades (15%)</label><select id="f-eval-sondeo" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7">7 - Parcial</option><option value="15">15 - Cumple</option></select></div>
+          <div class="fg"><label>Manejo de objeciones (15%)</label><select id="f-eval-objeciones" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7">7 - Parcial</option><option value="15">15 - Cumple</option></select></div>
+          <div class="fg"><label>Cierre de venta (15%)</label><select id="f-eval-cierre" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7">7 - Parcial</option><option value="15">15 - Cumple</option></select></div>
+          <div class="fg"><label>Valorización (10%)</label><select id="f-eval-valorizacion" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
+          <div class="fg"><label>Monetización (10%)</label><select id="f-eval-monetizacion" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
+          <div class="fg"><label>Manejo de producto (10%)</label><select id="f-eval-producto" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
+          <div class="fg"><label>Fluidez en la llamada (5%)</label><select id="f-eval-fluidez" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="2">2 - Parcial</option><option value="5">5 - Cumple</option></select></div>
+        </div>
+        <div style="text-align:center;margin-top:12px;padding:10px;background:var(--lt);border-radius:8px">
+          <span style="font-size:24px;font-weight:700;color:var(--dk)" id="eval-total-big">0%</span>
+          <div style="font-size:11px;color:var(--muted)">Calificación Total</div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="retro-normal-section">
+      <div class="fg"><label>Motivo / Situación</label><textarea id="f-rmotivo" rows="3" placeholder="Describe la situación..."></textarea></div>
+      <div class="fg"><label>Retroalimentación</label><textarea id="f-rcontenido" rows="4" placeholder="Detalle de la retroalimentación..."></textarea></div>
+      <div class="fg"><label>Compromisos</label><textarea id="f-rcompromisos" rows="3" placeholder="Compromisos acordados..."></textarea></div>
+      <div class="fg"><label>Seguimiento</label><input id="f-rseguimiento" placeholder="Fecha o acciones de seguimiento"></div>
+    </div>`;
     h+=`<div class="sec-title">📎 Anexos</div>
     <div class="fg">
       <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
@@ -867,12 +1010,29 @@ function renderFormContent(){
       <div class="fg"><label>Área</label><select id="f-aaarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
       <div class="fg"><label>Antigüedad</label><input id="f-aaantiguedad" placeholder="Tiempo en la empresa"></div>
     </div>
-    <div class="fg"><label>Tipo de Falta</label><select id="f-aatipo"><option>Falta leve</option><option>Falta grave</option><option>Falta muy grave</option></select></div>
-    <div class="fg"><label>Número de Incidencia</label><select id="f-aanumero"><option>Primera</option><option>Segunda</option><option>Tercera</option></select></div>
-    <div class="fg"><label>Descripción de los Hechos</label><textarea id="f-aahechos" rows="4" placeholder="Descripción detallada de los hechos..."></textarea></div>
+    <div class="grid2">
+      <div class="fg"><label>Tipo de Falta</label><select id="f-aatipo"><option>Falta leve</option><option>Falta grave</option><option>Falta muy grave</option></select></div>
+      <div class="fg"><label>Número de Incidencia</label><select id="f-aanumero"><option>Primera</option><option>Segunda</option><option>Tercera</option></select></div>
+    </div>
+    <div class="fg"><label>Descripción de los Hechos <span class="req">*</span></label><textarea id="f-aahechos" rows="5" placeholder="Descripción detallada de los hechos que motivaron el acta..."></textarea></div>
     <div class="fg"><label>Fundamento / Normativa</label><textarea id="f-aafundamento" rows="2" placeholder="Artículos o políticas que se incumplen..."></textarea></div>
-    <div class="fg"><label>Sanción Aplicada</label><textarea id="f-aasancion" rows="2" placeholder="Sanción que se aplica..."></textarea></div>
-    <div class="fg"><label>Compromiso del Colaborador</label><textarea id="f-aacompromiso" rows="2" placeholder="Compromiso del colaborador..."></textarea></div>`;
+    <div class="fg"><label>Sanción Aplicada <span class="req">*</span></label><textarea id="f-aasancion" rows="3" placeholder="Sanción que se aplica al colaborador..."></textarea></div>
+    <div class="fg"><label>Compromiso del Colaborador</label><textarea id="f-aacompromiso" rows="3" placeholder="Compromiso del colaborador para evitar reincidencia..."></textarea></div>
+    
+    <div class="sec-title">📋 Acuerdos y Revisiones</div>
+    <div class="fg"><label>Acuerdos para continuidad</label><textarea id="f-aaacuerdos" rows="3" placeholder="Acuerdos establecidos para evaluar la continuidad del empleado..."></textarea></div>
+    <div class="grid2">
+      <div class="fg"><label>Fecha de revisión</label><input type="date" id="f-aarevision"></div>
+      <div class="fg"><label>Responsable de seguimiento</label><input id="f-aaresponsable" placeholder="Nombre del responsable"></div>
+    </div>
+    
+    <div class="sec-title">✍️ Firmas</div>
+    <div class="grid2">
+      <div class="fg"><label>Colaborador que recibe</label><input id="f-aafirma1" placeholder="Nombre"></div>
+      <div class="fg"><label>Supervisor</label><input id="f-aafirma2" placeholder="Nombre"></div>
+      <div class="fg"><label>Quien emite el acta</label><input id="f-aafirma3" placeholder="Nombre"></div>
+      <div class="fg"><label>Testigo (opcional)</label><input id="f-aafirma4" placeholder="Nombre"></div>
+    </div>`;
     h+=`<div class="sec-title">📎 Anexos</div>
     <div class="fg">
       <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
@@ -892,13 +1052,57 @@ function renderFormContent(){
       <div class="fg"><label>Puesto</label><input id="f-bpuesto" placeholder="Puesto"></div>
       <div class="fg"><label>Área</label><select id="f-barea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
       <div class="fg"><label>Fecha de Ingreso</label><input type="date" id="f-bingreso"></div>
+      <div class="fg"><label>Último Día Laborado</label><input type="date" id="f-bultimo"></div>
+      <div class="fg"><label>Sueldo diario</label><input type="number" id="f-bsueldo" placeholder="$0.00" onchange="calcularFiniquito()"></div>
     </div>
     <div class="fg"><label>Tipo de Baja</label><select id="f-btipo"><option>Renuncia voluntaria</option><option>Rescisión de contrato</option><option>Término de contrato</option><option>Abandono de trabajo</option><option>Jubilación</option></select></div>
-    <div class="fg"><label>Último Día Laborado</label><input type="date" id="f-bultimo"></div>
     <div class="fg"><label>Motivo de la Baja</label><textarea id="f-bmotivo" rows="3" placeholder="Motivo de la baja..."></textarea></div>
-    <div class="fg"><label>Observaciones</label><textarea id="f-bobs" rows="3" placeholder="Observaciones adicionales..."></textarea></div>
-    <div class="fg"><label>Entrega de Equipo/Materiales</label><textarea id="f-bentrega" rows="2" placeholder="Lista de equipo entregado..."></textarea></div>`;
-    h+=`<div class="sec-title">📎 Anexos</div>
+    <div class="fg"><label>Observaciones</label><textarea id="f-bobs" rows="2" placeholder="Observaciones adicionales..."></textarea></div>
+    <div class="fg"><label>Entrega de Equipo/Materiales</label><textarea id="f-bentrega" rows="2" placeholder="Lista de equipo entregado..."></textarea></div>
+    
+    <div class="sec-title">💰 Cálculo de Finiquito</div>
+    <div style="background:#f8f9fa;padding:16px;border-radius:8px">
+      <div class="grid2">
+        <div class="fg"><label>Días laborados adeudados</label><input type="number" id="f-bdias" value="0" onchange="calcularFiniquito()"></div>
+        <div class="fg"><label>Monto días ($)</label><input id="f-bdiasmon" readonly style="background:#e9ecef"></div>
+        <div class="fg"><label>Proporcional vacaciones (días)</label><input type="number" id="f-bvacaciones" value="0" onchange="calcularFiniquito()"></div>
+        <div class="fg"><label>Monto vacaciones ($)</label><input id="f-bvacmon" readonly style="background:#e9ecef"></div>
+        <div class="fg"><label>Proporcional aguinaldo (días)</label><input type="number" id="f-baguinaldo" value="0" onchange="calcularFiniquito()"></div>
+        <div class="fg"><label>Monto aguinaldo ($)</label><input id="f-baguimon" readonly style="background:#e9ecef"></div>
+        <div class="fg"><label>Prima vacacional (%)</label><input type="number" id="f-bprima" value="25" onchange="calcularFiniquito()"></div>
+        <div class="fg"><label>Monto prima ($)</label><input id="f-bprimamon" readonly style="background:#e9ecef"></div>
+        <div class="fg"><label>Comisiones pendientes ($)</label><input type="number" id="f-bcomisiones" value="0" onchange="calcularFiniquito()"></div>
+        <div class="fg"><label>Otros conceptos ($)</label><input type="number" id="f-botros" value="0" onchange="calcularFiniquito()"></div>
+      </div>
+      <div style="margin-top:12px;padding:12px;background:var(--lt);border-radius:8px;text-align:center">
+        <div style="font-size:12px;color:var(--muted)">TOTAL FINIQUITO</div>
+        <div style="font-size:28px;font-weight:700;color:var(--dk)" id="f-btotal">$0.00</div>
+      </div>
+    </div>
+    
+    <div class="sec-title">✅ Estatus de Pago</div>
+    <div class="fg">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="f-bpagado" style="width:20px;height:20px">
+        <span>Finiquito pagado</span>
+      </label>
+    </div>
+    <div class="grid2">
+      <div class="fg"><label>Fecha de pago</label><input type="date" id="f-bfechapago"></div>
+      <div class="fg"><label>Método de pago</label><select id="f-bmetodo"><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select></div>
+    </div>
+    
+    <div class="sec-title">📄 Documentos de Baja</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('docs-baja-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text"><b>Clic para subir documentos firmados</b></div>
+        <div style="font-size:11px;color:var(--muted)">Renuncia, finiquito firmado, etc.</div>
+      </div>
+      <input type="file" id="docs-baja-input" accept="image/*,.pdf" multiple style="display:none" onchange="handleDocsBaja(this)">
+      <div id="docs-baja-preview"></div>
+    </div>`;
+    h+=`<div class="sec-title">📎 Anexos adicionales</div>
     <div class="fg">
       <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
         <div class="upload-icon">🖼️</div>
@@ -1001,12 +1205,32 @@ function collectDocData(){
         anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='retroalimentacion'){
+    const tipoRetro = V('f-rtipo');
+    let evalData = null;
+    if(tipoRetro === 'Evaluación de llamada'){
+      evalData = {
+        tiempoLlamada: V('f-rtiempollamada'),
+        numero: V('f-rnumero'),
+        tipificacion: V('f-rtipificacion'),
+        saludo: parseInt(V('f-eval-saludo'))||0,
+        tono: parseInt(V('f-eval-tono'))||0,
+        sondeo: parseInt(V('f-eval-sondeo'))||0,
+        objeciones: parseInt(V('f-eval-objeciones'))||0,
+        cierre: parseInt(V('f-eval-cierre'))||0,
+        valorizacion: parseInt(V('f-eval-valorizacion'))||0,
+        monetizacion: parseInt(V('f-eval-monetizacion'))||0,
+        producto: parseInt(V('f-eval-producto'))||0,
+        fluidez: parseInt(V('f-eval-fluidez'))||0,
+        total: calcularEval()
+      };
+    }
     return {
       type:'retroalimentacion', folio:V('f-rfolio'), title:`Retroalimentación – ${V('f-rcolaborador')}`,
       displayDate:fmtDate(V('f-rfecha')), status:'pendiente',
       data:{fecha:V('f-rfecha'),colaborador:V('f-rcolaborador'),puesto:V('f-rpuesto'),
-        area:V('f-rarea'),supervisor:V('f-rsupervisor'),tipo:V('f-rtipo'),
+        area:V('f-rarea'),supervisor:V('f-rsupervisor'),tipo:tipoRetro,
         motivo:V('f-rmotivo'),contenido:V('f-rcontenido'),compromisos:V('f-rcompromisos'),seguimiento:V('f-rseguimiento'),
+        evaluacionLlamada: evalData,
         anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='plantrabajo'){
@@ -1025,15 +1249,29 @@ function collectDocData(){
       data:{fecha:V('f-aafecha'),colaborador:V('f-aacolaborador'),puesto:V('f-aapuesto'),
         area:V('f-aaarea'),antiguedad:V('f-aaantiguedad'),tipoFalta:V('f-aatipo'),numero:V('f-aanumero'),
         hechos:V('f-aahechos'),fundamento:V('f-aafundamento'),sancion:V('f-aasancion'),compromiso:V('f-aacompromiso'),
+        acuerdos:V('f-aaacuerdos'),fechaRevision:V('f-aarevision'),responsableSeguimiento:V('f-aaresponsable'),
+        firmaColaborador:V('f-aafirma1'),firmaSupervisor:V('f-aafirma2'),firmaEmite:V('f-aafirma3'),firmaTestigo:V('f-aafirma4'),
         anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='baja'){
+    const finiquito = calcularFiniquito();
     return {
       type:'baja', folio:V('f-bfolio'), title:`Baja – ${V('f-bcolaborador')}`,
       displayDate:fmtDate(V('f-bfecha')), status:'pendiente',
       data:{fecha:V('f-bfecha'),colaborador:V('f-bcolaborador'),puesto:V('f-bpuesto'),
         area:V('f-barea'),ingreso:V('f-bingreso'),tipo:V('f-btipo'),ultimo:V('f-bultimo'),
         motivo:V('f-bmotivo'),observaciones:V('f-bobs'),entrega:V('f-bentrega'),
+        sueldo:parseFloat(V('f-bsueldo'))||0,
+        finiquito:{
+          dias:parseFloat(V('f-bdias'))||0, montoDias:finiquito.montoDias,
+          vacaciones:parseFloat(V('f-bvacaciones'))||0, montoVac:finiquito.montoVac,
+          aguinaldo:parseFloat(V('f-baguinaldo'))||0, montoAgui:finiquito.montoAgui,
+          primaPct:parseFloat(V('f-bprima'))||25, montoPrima:finiquito.montoPrima,
+          comisiones:finiquito.comisiones, otros:finiquito.otros, total:finiquito.total
+        },
+        pagado:document.getElementById('f-bpagado')?.checked||false,
+        fechaPago:V('f-bfechapago'),metodoPago:V('f-bmetodo'),
+        docsBaja:docsBajaData.slice(),
         anexos:anexos,tabla:tabla}
     };
   }
@@ -1044,6 +1282,7 @@ function saveAndDownload(mode){
   docData.id=genId();docData.createdAt=Date.now();docData.evidence=null;docData.evidenceDate=null;
   const docs=loadDocs();docs.push(docData);saveDocs(docs);
   anexosData = []; // Reset anexos after save
+  docsBajaData = []; // Reset docs baja after save
   uploadToDrive(docData);
   if(mode==='pdf') generateDocPDF(docData);
   else if(mode==='word') generateDocWord(docData);
@@ -1061,6 +1300,8 @@ function downloadDocWord(id){const docs=loadDocs();const d=docs.find(x=>x.id===i
 function generateDocPDF(d){
   const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','letter');
   const w=215.9,m=16;let y=6;
+  
+  // Header
   doc.setFillColor(240,247,252);doc.rect(0,0,w,26,'F');
   doc.setFillColor(220,238,251);doc.rect(0,18,w,8,'F');
   doc.setFillColor(200,225,245);doc.rect(0,22,w,4,'F');
@@ -1069,44 +1310,142 @@ function generateDocPDF(d){
   doc.setDrawColor(27,117,187);doc.setLineWidth(0.7);doc.line(0,26,w,26);y=32;
 
   const dd=d.data||{};
-  const addFooter=(pn)=>{doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,279-16,w-m,279-16);doc.setFontSize(7);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`ExpertCell | ${d.type==='minuta'?'Minuta Presencial':'Comunicado Interno'} | ${d.folio||''} | Pág ${pn}`,w/2,279-11,{align:'center'});};
+  const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
+  const addFooter=(pn)=>{doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,279-16,w-m,279-16);doc.setFontSize(7);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`ExpertCell | ${typeNames[d.type]||d.type} | ${d.folio||''} | Pág ${pn}`,w/2,279-11,{align:'center'});};
   const checkPage=()=>{if(y>245){addFooter(doc.getNumberOfPages());doc.addPage();y=16;return true;}return false;};
+  const sec=(title)=>{checkPage();doc.setFontSize(11);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text(title,m,y);y+=6;};
+  const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
+  const addText=(text)=>{if(!text)return;doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(text,w-m*2);doc.text(ls,m,y);y+=ls.length*4.5+4;};
 
   if(d.type==='minuta'){
-    doc.setFontSize(18);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('MINUTA DE REUNIÓN PRESENCIAL',w/2,y+6,{align:'center'});
-    doc.setFontSize(10);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`☑ ${dd.tipo||'Ordinaria'}     Folio: ${d.folio||''}`,w/2,y+13,{align:'center'});
-    doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,y+16,w-m,y+16);y+=22;
+    doc.setFontSize(18);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('MINUTA DE REUNIÓN',w/2,y+6,{align:'center'});
+    doc.setFontSize(10);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`${dd.tipo||''}     Folio: ${d.folio||''}`,w/2,y+13,{align:'center'});
+    doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,y+16,w-m,y+16);y+=24;
 
-    const sec=(title)=>{checkPage();doc.setFontSize(11);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text(title,m,y);y+=5;};
-    const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
+    sec('Información de la Reunión');
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[
+      ['Fecha:',fmtDate(dd.fecha),'Folio:',d.folio||''],
+      ['Hora inicio:',dd.hinicio||'—','Hora término:',dd.hfin||'—'],
+      ['Ubicación:',{content:dd.ubicacion||'—',colSpan:3}],
+      ['Convocada por:',{content:dd.convoca||'—',colSpan:3}]
+    ]});y=doc.lastAutoTable.finalY+6;
 
-    sec('1. Información de la Reunión');
-    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Fecha:',fmtDate(dd.fecha),'Folio:',d.folio||''],['Hora inicio:',dd.hinicio||'—','Hora término:',dd.hfin||'—'],['Ubicación:',{content:dd.ubicacion||'—',colSpan:3}],['Convocada por:',{content:dd.convoca||'—',colSpan:3}],['Objetivo:',{content:dd.objetivo||'—',colSpan:3}]]});y=doc.lastAutoTable.finalY+6;
-
-    if(dd.asistentes?.length){sec('2. Lista de Asistencia');doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Asistencia','Firma']],body:dd.asistentes.map((a,i)=>[i+1,a.nombre,a.cargo,a.asistencia,''])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.orden?.length){sec('3. Orden del Día');doc.autoTable({startY:y,...tblOpts,head:[['Horario','Tema','Responsable']],body:dd.orden.map(o=>[o.horario,o.tema,o.responsable])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.desarrollo?.length){sec('4. Desarrollo');doc.autoTable({startY:y,...tblOpts,head:[['#','Tema','Resumen','Decisión']],body:dd.desarrollo.map((x,i)=>[i+1,x.tema,x.descripcion,x.decision])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.acuerdos?.length){sec('5. Acuerdos');doc.autoTable({startY:y,...tblOpts,head:[['#','Compromiso','Resp.','Fecha','Prior.','Estatus']],body:dd.acuerdos.map((a,i)=>[i+1,a.compromiso,a.responsable,a.fecha,a.prioridad,a.estatus])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.proxReunion?.fecha){sec('6. Próxima Reunión');doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Fecha:',fmtDate(dd.proxReunion.fecha)],['Hora:',dd.proxReunion.hora||'—'],['Lugar:',dd.proxReunion.lugar||'—'],['Pendientes:',dd.proxReunion.temas||'—']]});y=doc.lastAutoTable.finalY+6;}
-    if(dd.observaciones){sec('7. Observaciones');doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(dd.observaciones,w-m*2);doc.text(ls,m,y);y+=ls.length*4.5+4;}
-    if(dd.firmas?.length){checkPage();sec('8. Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre,cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo,cx,y+9,{align:'center'});});}
-  } else {
+    if(dd.objetivo){sec('Objetivo');addText(dd.objetivo);}
+    if(dd.descripcion){sec('Descripción');addText(dd.descripcion);}
+    if(dd.asistentes?.length){sec('Lista de Asistencia');doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Asistencia','Firma']],body:dd.asistentes.map((a,i)=>[i+1,a.nombre,a.cargo,a.asistencia,''])});y=doc.lastAutoTable.finalY+6;}
+    if(dd.desarrollo?.length){sec('Desarrollo');doc.autoTable({startY:y,...tblOpts,head:[['#','Tema','Descripción','Decisión']],body:dd.desarrollo.map((x,i)=>[i+1,x.tema,x.descripcion,x.decision])});y=doc.lastAutoTable.finalY+6;}
+    if(dd.acuerdos?.length){sec('Acuerdos y Compromisos');doc.autoTable({startY:y,...tblOpts,head:[['#','Compromiso','Responsable','Fecha','Prioridad','Estatus']],body:dd.acuerdos.map((a,i)=>[i+1,a.compromiso,a.responsable,a.fecha,a.prioridad,a.estatus])});y=doc.lastAutoTable.finalY+6;}
+    if(dd.proxReunion?.fecha){sec('Próxima Reunión');doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Fecha:',fmtDate(dd.proxReunion.fecha)],['Hora:',dd.proxReunion.hora||'—'],['Lugar:',dd.proxReunion.lugar||'—'],['Pendientes:',dd.proxReunion.temas||'—']]});y=doc.lastAutoTable.finalY+6;}
+    if(dd.observaciones){sec('Observaciones');addText(dd.observaciones);}
+    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
+    
+  } else if(d.type==='aviso'){
     doc.setFillColor(13,79,128);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
     doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('AVISO INTERNO',w/2,y+10,{align:'center'});
-    doc.setFontSize(9);doc.setTextColor(168,209,240);doc.text(`☑ ${dd.tipo||''}   |   Prioridad: ${dd.prioridad||''}`,w/2,y+15.5,{align:'center'});y+=24;
-    const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
+    doc.setFontSize(9);doc.setTextColor(168,209,240);doc.text(`${dd.tipo||''}   |   Prioridad: ${dd.prioridad||''}`,w/2,y+15.5,{align:'center'});y+=24;
 
-    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Vigencia:',dd.vigencia||'—'],['Emitido por:',dd.emitido||'—'],['Dirigido a:',dd.dirigido||'—'],['Prioridad:',dd.prioridad||'']]});y=doc.lastAutoTable.finalY+6;
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Vigencia:',dd.vigencia||'—'],['Emitido por:',dd.emitido||'—'],['Dirigido a:',dd.dirigido||'—']]});y=doc.lastAutoTable.finalY+6;
+    if(dd.asunto){sec('Asunto');doc.setFontSize(12);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text(dd.asunto,m,y);y+=8;}
+    if(dd.contenido){sec('Contenido');addText(dd.contenido);}
+    if(dd.acciones?.length){sec('Acciones Requeridas');doc.autoTable({startY:y,...tblOpts,head:[['#','Acción','Responsable','Fecha']],body:dd.acciones.map((a,i)=>[i+1,a.accion,a.responsable,a.fecha])});y=doc.lastAutoTable.finalY+6;}
+    if(dd.contacto){sec('Contacto');addText(dd.contacto);}
+    
+  } else if(d.type==='retroalimentacion'){
+    doc.setFillColor(46,125,50);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
+    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('RETROALIMENTACIÓN',w/2,y+10,{align:'center'});
+    doc.setFontSize(9);doc.setTextColor(200,230,201);doc.text(`${dd.tipo||''}`,w/2,y+15.5,{align:'center'});y+=24;
 
-    if(dd.asunto){doc.setFillColor(27,117,187);doc.roundedRect(m,y,w-m*2,7,1.5,1.5,'F');doc.setFontSize(10);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('ASUNTO',m+4,y+5);y+=9;doc.setFontSize(12);doc.setTextColor(13,79,128);doc.text(dd.asunto,m+4,y+4);y+=10;}
-    if(dd.contenido){doc.setFillColor(27,117,187);doc.roundedRect(m,y,w-m*2,7,1.5,1.5,'F');doc.setFontSize(10);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('CONTENIDO',m+4,y+5);y+=10;doc.setFontSize(10);doc.setTextColor(74,74,74);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(dd.contenido,w-m*2-8);doc.text(ls,m+4,y+2);y+=ls.length*4.5+6;}
-    if(dd.acciones?.length){if(y>220){addFooter(doc.getNumberOfPages());doc.addPage();y=16;}doc.setFillColor(27,117,187);doc.roundedRect(m,y,w-m*2,7,1.5,1.5,'F');doc.setFontSize(10);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('ACCIONES REQUERIDAS',m+4,y+5);y+=9;doc.autoTable({startY:y,...tblOpts,head:[['#','Acción','Responsable','Fecha']],body:dd.acciones.map((a,i)=>[i+1,a.accion,a.responsable,a.fecha])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.contacto){doc.setFillColor(232,242,250);doc.roundedRect(m,y,w-m*2,10,2,2,'F');doc.setFontSize(9);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('ℹ Contacto: ',m+4,y+6.5);doc.setFont('helvetica','normal');doc.setTextColor(74,74,74);doc.text(dd.contacto,m+30,y+6.5);y+=16;}
-    if(dd.firmas?.length){y+=6;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre,cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo,cx,y+9,{align:'center'});});y+=18;}
-    if(y>235){addFooter(doc.getNumberOfPages());doc.addPage();y=16;}
-    doc.setDrawColor(27,117,187);doc.setLineWidth(.6);doc.line(m,y,w-m,y);y+=6;doc.setFontSize(12);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('ACUSE DE RECIBO',w/2,y,{align:'center'});y+=5;doc.setFontSize(9);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text('Confirmo haber leído y comprendido el presente aviso.',w/2,y,{align:'center'});y+=4;
-    doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Firma','Fecha']],body:[[1,'','','',''],[2,'','','',''],[3,'','','',''],[4,'','','',''],[5,'','','',''],[6,'','','','']]});
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[232,245,233],fontStyle:'bold',textColor:[27,94,32]}},body:[
+      ['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Colaborador:',dd.colaborador||''],['Puesto:',dd.puesto||''],['Área:',dd.area||''],['Supervisor:',dd.supervisor||''],['Tipo:',dd.tipo||'']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    if(dd.evaluacionLlamada){
+      const ev=dd.evaluacionLlamada;
+      sec('Datos de la Llamada');
+      doc.autoTable({startY:y,...tblOpts,body:[['Tiempo:',ev.tiempoLlamada||'—'],['Número:',ev.numero||'—'],['Tipificación:',ev.tipificacion||'—']]});y=doc.lastAutoTable.finalY+6;
+      sec('Evaluación de Calidad');
+      doc.autoTable({startY:y,...tblOpts,head:[['Criterio','Puntos','Máximo']],body:[
+        ['Saludo',ev.saludo,'10'],['Tono de voz',ev.tono,'10'],['Sondeo de necesidades',ev.sondeo,'15'],
+        ['Manejo de objeciones',ev.objeciones,'15'],['Cierre de venta',ev.cierre,'15'],['Valorización',ev.valorizacion,'10'],
+        ['Monetización',ev.monetizacion,'10'],['Manejo de producto',ev.producto,'10'],['Fluidez',ev.fluidez,'5'],
+        [{content:'TOTAL',styles:{fontStyle:'bold'}},{content:ev.total+'%',styles:{fontStyle:'bold'}},{content:'100%',styles:{fontStyle:'bold'}}]
+      ]});y=doc.lastAutoTable.finalY+6;
+    } else {
+      if(dd.motivo){sec('Motivo / Situación');addText(dd.motivo);}
+      if(dd.contenido){sec('Retroalimentación');addText(dd.contenido);}
+      if(dd.compromisos){sec('Compromisos');addText(dd.compromisos);}
+      if(dd.seguimiento){sec('Seguimiento');addText(dd.seguimiento);}
+    }
+
+  } else if(d.type==='plantrabajo'){
+    doc.setFillColor(21,101,192);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
+    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('PLAN DE TRABAJO',w/2,y+10,{align:'center'});y+=24;
+
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[227,242,253],fontStyle:'bold',textColor:[13,71,161]}},body:[
+      ['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Colaborador:',dd.colaborador||''],['Puesto:',dd.puesto||''],['Área:',dd.area||''],['Supervisor:',dd.supervisor||''],['Periodo:',dd.periodo||'']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    if(dd.objetivo){sec('Objetivo del Plan');addText(dd.objetivo);}
+    if(dd.actividades){sec('Actividades / Metas');addText(dd.actividades);}
+    if(dd.indicadores){sec('Indicadores de Éxito');addText(dd.indicadores);}
+    if(dd.revision){sec('Fecha de Revisión');addText(fmtDate(dd.revision));}
+
+  } else if(d.type==='actaadmin'){
+    doc.setFillColor(198,40,40);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
+    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('ACTA ADMINISTRATIVA',w/2,y+10,{align:'center'});
+    doc.setFontSize(9);doc.setTextColor(255,205,210);doc.text(`${dd.tipoFalta||''} - ${dd.numero||''} incidencia`,w/2,y+15.5,{align:'center'});y+=24;
+
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[255,235,238],fontStyle:'bold',textColor:[183,28,28]}},body:[
+      ['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Colaborador:',dd.colaborador||''],['Puesto:',dd.puesto||''],['Área:',dd.area||''],['Antigüedad:',dd.antiguedad||'']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    if(dd.hechos){sec('Descripción de los Hechos');addText(dd.hechos);}
+    if(dd.fundamento){sec('Fundamento / Normativa');addText(dd.fundamento);}
+    if(dd.sancion){sec('Sanción Aplicada');addText(dd.sancion);}
+    if(dd.compromiso){sec('Compromiso del Colaborador');addText(dd.compromiso);}
+    if(dd.acuerdos){sec('Acuerdos y Revisiones');addText(dd.acuerdos);}
+    if(dd.fechaRevision){sec('Fecha de Revisión');addText(fmtDate(dd.fechaRevision)+' - Responsable: '+(dd.responsableSeguimiento||''));}
+
+    checkPage();sec('Firmas');y+=15;
+    const firmas=[{n:dd.firmaColaborador,c:'Colaborador'},{n:dd.firmaSupervisor,c:'Supervisor'},{n:dd.firmaEmite,c:'Emite'},{n:dd.firmaTestigo,c:'Testigo'}].filter(f=>f.n);
+    if(firmas.length){const sp=(w-m*2)/firmas.length;firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.n,cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.c,cx,y+9,{align:'center'});});}
+
+  } else if(d.type==='baja'){
+    doc.setFillColor(123,31,162);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
+    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('BAJA DE PERSONAL',w/2,y+10,{align:'center'});
+    doc.setFontSize(9);doc.setTextColor(225,190,231);doc.text(`${dd.tipo||''}`,w/2,y+15.5,{align:'center'});y+=24;
+
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:45,fillColor:[243,229,245],fontStyle:'bold',textColor:[74,20,140]}},body:[
+      ['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Colaborador:',dd.colaborador||''],['Puesto:',dd.puesto||''],['Área:',dd.area||''],
+      ['Fecha ingreso:',fmtDate(dd.ingreso)],['Último día:',fmtDate(dd.ultimo)],['Tipo de baja:',dd.tipo||'']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    if(dd.motivo){sec('Motivo de la Baja');addText(dd.motivo);}
+    if(dd.observaciones){sec('Observaciones');addText(dd.observaciones);}
+    if(dd.entrega){sec('Entrega de Equipo/Materiales');addText(dd.entrega);}
+
+    if(dd.finiquito){
+      sec('Cálculo de Finiquito');
+      const fin=dd.finiquito;
+      doc.autoTable({startY:y,...tblOpts,head:[['Concepto','Cantidad','Monto']],body:[
+        ['Días laborados adeudados',fin.dias||0,'$'+(fin.montoDias||0).toFixed(2)],
+        ['Proporcional vacaciones',fin.vacaciones||0,'$'+(fin.montoVac||0).toFixed(2)],
+        ['Proporcional aguinaldo',fin.aguinaldo||0,'$'+(fin.montoAgui||0).toFixed(2)],
+        ['Prima vacacional',fin.primaPct+'%','$'+(fin.montoPrima||0).toFixed(2)],
+        ['Comisiones pendientes','','$'+(fin.comisiones||0).toFixed(2)],
+        ['Otros conceptos','','$'+(fin.otros||0).toFixed(2)],
+        [{content:'TOTAL FINIQUITO',styles:{fontStyle:'bold'}},{content:'',styles:{fontStyle:'bold'}},{content:'$'+(fin.total||0).toFixed(2),styles:{fontStyle:'bold'}}]
+      ]});y=doc.lastAutoTable.finalY+6;
+    }
+
+    sec('Estatus de Pago');
+    doc.autoTable({startY:y,...tblOpts,body:[
+      ['Pagado:',dd.pagado?'✅ SÍ':'❌ NO'],
+      ['Fecha de pago:',dd.fechaPago?fmtDate(dd.fechaPago):'—'],
+      ['Método:',dd.metodoPago||'—']
+    ]});y=doc.lastAutoTable.finalY+6;
   }
+
   for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
   doc.save(`${d.folio||'documento'}_ExpertCell.pdf`);
 }
