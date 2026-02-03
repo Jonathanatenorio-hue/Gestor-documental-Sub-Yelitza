@@ -1426,16 +1426,76 @@ function removeFormRow(ref,i,cid,colsB64){
 function V(id){
   const el = document.getElementById(id);
   if(!el) return '';
-  // Check if it's a contenteditable div (rich editor)
-  if(el.hasAttribute('contenteditable')) return el.innerHTML || '';
+  // Para contenteditable, guardar el HTML para preservar formato
+  if(el.hasAttribute('contenteditable')){
+    return el.innerHTML || '';
+  }
   return el.value || '';
 }
-function VText(id){
-  const el = document.getElementById(id);
-  if(!el) return '';
-  if(el.hasAttribute('contenteditable')) return el.innerText || '';
-  return el.value || '';
+
+// Función para limpiar texto con letras espaciadas SIN eliminar saltos de línea
+// Solo se usa al GENERAR PDF, no al guardar
+function cleanSpacedText(text) {
+  if(!text) return '';
+  
+  // Primero normalizar todos los tipos de espacios especiales a espacio normal (NO saltos de línea)
+  text = text.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ');
+  
+  // Procesar línea por línea para preservar estructura
+  const lines = text.split('\n');
+  const cleanedLines = lines.map(line => {
+    // Para cada línea, detectar letras espaciadas
+    const words = line.split(/( +)/);  // Solo espacios, no saltos de línea
+    let result = [];
+    let buffer = [];
+    
+    for(let i = 0; i < words.length; i++) {
+      const word = words[i];
+      
+      // Si es espacio
+      if(/^ +$/.test(word)) {
+        if(buffer.length > 0) {
+          buffer.push(' ');
+        } else {
+          result.push(word);
+        }
+        continue;
+      }
+      
+      // Si es un caracter solo (letra, número o símbolo común)
+      if(word.length === 1 && /[A-Za-zÀ-ÿ0-9\*\-\:\(\)\,\.]/.test(word)) {
+        buffer.push(word);
+      } else {
+        // Palabra normal - vaciar buffer si hay
+        if(buffer.length >= 3) {
+          // Tenemos letras espaciadas, unirlas (quitar espacios del buffer)
+          const joined = buffer.filter(b => b !== ' ').join('');
+          result.push(joined);
+        } else if(buffer.length > 0) {
+          // Pocos caracteres, dejarlos como están
+          result.push(buffer.join(''));
+        }
+        buffer = [];
+        result.push(word);
+      }
+    }
+    
+    // Vaciar buffer final
+    if(buffer.length >= 3) {
+      const joined = buffer.filter(b => b !== ' ').join('');
+      result.push(joined);
+    } else if(buffer.length > 0) {
+      result.push(buffer.join(''));
+    }
+    
+    // Limpiar espacios múltiples en la línea
+    return result.join('').replace(/ +/g, ' ').trim();
+  });
+  
+  // Unir líneas preservando saltos
+  return cleanedLines.join('\n');
 }
+
 function fmtDate(d){if(!d)return'—';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
 
 function collectDocData(){
@@ -1583,8 +1643,8 @@ function downloadDocWord(id){const docs=loadDocs();const d=docs.find(x=>x.id===i
 // ══════════════════════════════════════════════════════
 function generateDocPDF(d){
   const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','letter');
-  const pageWidth=216, pageHeight=279, m=20;
-  const textWidth = 170; // Ancho fijo más conservador para texto
+  const pageWidth=216, pageHeight=279, m=22;
+  const textWidth = 160; // Ancho conservador: 216 - 22*2 - 12 extra = 160
   let y=6;
   
   // Header
@@ -1635,43 +1695,65 @@ function generateDocPDF(d){
     tableWidth: textWidth
   };
   
-  // Convertir HTML a texto plano
+  // Convertir HTML a texto plano - usar DOM para limpieza completa
   const stripHtml = (html) => {
     if(!html) return '';
-    let text = html
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/div>/gi, '\n')
-      .replace(/<\/p>/gi, '\n\n')
-      .replace(/<\/li>/gi, '\n')
-      .replace(/<li[^>]*>/gi, '• ')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&amp;/gi, '&')
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/&quot;/gi, '"')
-      .replace(/\n\s*\n\s*\n/g, '\n\n')
+    
+    // Crear elemento temporal para extraer texto limpio
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    
+    // Reemplazar br, p, div con saltos de línea antes de extraer texto
+    temp.querySelectorAll('br').forEach(el => el.replaceWith('\n'));
+    temp.querySelectorAll('p, div').forEach(el => {
+      el.insertAdjacentText('afterend', '\n');
+    });
+    temp.querySelectorAll('li').forEach(el => {
+      el.insertAdjacentText('beforebegin', '• ');
+      el.insertAdjacentText('afterend', '\n');
+    });
+    
+    // Extraer solo texto (sin formato)
+    let text = temp.innerText || temp.textContent || '';
+    
+    // Usar la función global de limpieza de texto espaciado
+    text = cleanSpacedText(text);
+    
+    // Limpiar saltos de línea excesivos
+    text = text
+      .replace(/\r/g, '')
+      .replace(/\t/g, '    ')
+      .replace(/\n +/g, '\n')
+      .replace(/ +\n/g, '\n')
+      .replace(/\n\n\n+/g, '\n\n')
       .trim();
+    
     return text;
   };
   
   const addText=(text)=>{
     if(!text)return;
-    const cleanText = stripHtml(text);
+    let cleanText = stripHtml(text);
+    // Doble limpieza por si acaso
+    cleanText = cleanSpacedText(cleanText);
     if(!cleanText) return;
     
+    // Configurar fuente consistente
     doc.setFontSize(10);
-    doc.setTextColor(40,40,40);
+    doc.setTextColor(30,30,30);
     doc.setFont('helvetica','normal');
     
-    const lines = doc.splitTextToSize(cleanText, textWidth);
+    // Usar un ancho ligeramente menor para asegurar que no se corte
+    const safeWidth = textWidth - 5;
+    const lines = doc.splitTextToSize(cleanText, safeWidth);
     const lineHeight = 4.5;
     
     for(let i=0; i<lines.length; i++){
       if(y > maxY){
         newPage();
+        // Resetear fuente después de nueva página
         doc.setFontSize(10);
-        doc.setTextColor(40,40,40);
+        doc.setTextColor(30,30,30);
         doc.setFont('helvetica','normal');
       }
       doc.text(lines[i], m, y);
