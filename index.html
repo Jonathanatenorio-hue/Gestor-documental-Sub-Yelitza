@@ -297,6 +297,7 @@ function renderDashboard(){
           <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')" title="PDF">📕</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')" title="Word">📄</button>
           <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')" title="Subir evidencia">📎</button>
+          <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')" title="Eliminar">🗑️</button>
         </td>
       </tr>`;
     });
@@ -1521,10 +1522,31 @@ function generateDocPDF(d){
   const dd=d.data||{};
   const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
   const addFooter=(pn)=>{doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,279-16,w-m,279-16);doc.setFontSize(7);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`ExpertCell | ${typeNames[d.type]||d.type} | ${d.folio||''} | Pág ${pn}`,w/2,279-11,{align:'center'});};
-  const checkPage=()=>{if(y>245){addFooter(doc.getNumberOfPages());doc.addPage();y=16;return true;}return false;};
+  const checkPage=()=>{if(y>250){addFooter(doc.getNumberOfPages());doc.addPage();y=16;return true;}return false;};
   const sec=(title)=>{checkPage();doc.setFontSize(11);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text(title,m,y);y+=6;};
-  const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
-  const addText=(text)=>{if(!text)return;doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(text,w-m*2);doc.text(ls,m,y);y+=ls.length*4.5+4;};
+  const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3,overflow:'linebreak'},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
+  
+  // Improved addText with proper page breaks
+  const addText=(text)=>{
+    if(!text)return;
+    doc.setFontSize(9);
+    doc.setTextColor(74,74,74);
+    doc.setFont('helvetica','normal');
+    const maxWidth = w - m*2;
+    const lines = doc.splitTextToSize(text, maxWidth);
+    const lineHeight = 4.2;
+    
+    lines.forEach((line, i) => {
+      if(y > 255){
+        addFooter(doc.getNumberOfPages());
+        doc.addPage();
+        y = 16;
+      }
+      doc.text(line, m, y);
+      y += lineHeight;
+    });
+    y += 3;
+  };
 
   if(d.type==='minuta'){
     doc.setFontSize(18);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('MINUTA DE REUNIÓN',w/2,y+6,{align:'center'});
