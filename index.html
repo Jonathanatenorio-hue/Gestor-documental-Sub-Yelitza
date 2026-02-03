@@ -1438,41 +1438,37 @@ function V(id){
 function cleanSpacedText(text) {
   if(!text) return '';
   
-  // Primero normalizar todos los tipos de espacios especiales a espacio normal (NO saltos de línea)
+  // Normalizar espacios especiales Unicode
   text = text.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ');
   
-  // Procesar línea por línea para preservar estructura
+  // MÉTODO 1: Regex para detectar patrones como "P A L A B R A" (letras sueltas con espacios)
+  // Busca 3+ caracteres individuales separados por espacios simples
+  text = text.replace(/\b([A-Za-zÀ-ÿ0-9\*\-\:\(\)]) ([A-Za-zÀ-ÿ0-9\*\-\:\(\)]) ([A-Za-zÀ-ÿ0-9\*\-\:\(\)])(?: ([A-Za-zÀ-ÿ0-9\*\-\:\(\)]))+/g, 
+    (match) => match.replace(/ /g, '')
+  );
+  
+  // MÉTODO 2: Procesar línea por línea para casos que el regex no capture
   const lines = text.split('\n');
   const cleanedLines = lines.map(line => {
-    // Para cada línea, detectar letras espaciadas
-    const words = line.split(/( +)/);  // Solo espacios, no saltos de línea
+    const words = line.split(/( +)/);
     let result = [];
     let buffer = [];
     
     for(let i = 0; i < words.length; i++) {
       const word = words[i];
       
-      // Si es espacio
       if(/^ +$/.test(word)) {
-        if(buffer.length > 0) {
-          buffer.push(' ');
-        } else {
-          result.push(word);
-        }
+        if(buffer.length > 0) buffer.push(' ');
+        else result.push(word);
         continue;
       }
       
-      // Si es un caracter solo (letra, número o símbolo común)
       if(word.length === 1 && /[A-Za-zÀ-ÿ0-9\*\-\:\(\)\,\.]/.test(word)) {
         buffer.push(word);
       } else {
-        // Palabra normal - vaciar buffer si hay
         if(buffer.length >= 3) {
-          // Tenemos letras espaciadas, unirlas (quitar espacios del buffer)
-          const joined = buffer.filter(b => b !== ' ').join('');
-          result.push(joined);
+          result.push(buffer.filter(b => b !== ' ').join(''));
         } else if(buffer.length > 0) {
-          // Pocos caracteres, dejarlos como están
           result.push(buffer.join(''));
         }
         buffer = [];
@@ -1480,19 +1476,15 @@ function cleanSpacedText(text) {
       }
     }
     
-    // Vaciar buffer final
     if(buffer.length >= 3) {
-      const joined = buffer.filter(b => b !== ' ').join('');
-      result.push(joined);
+      result.push(buffer.filter(b => b !== ' ').join(''));
     } else if(buffer.length > 0) {
       result.push(buffer.join(''));
     }
     
-    // Limpiar espacios múltiples en la línea
     return result.join('').replace(/ +/g, ' ').trim();
   });
   
-  // Unir líneas preservando saltos
   return cleanedLines.join('\n');
 }
 
@@ -1643,8 +1635,8 @@ function downloadDocWord(id){const docs=loadDocs();const d=docs.find(x=>x.id===i
 // ══════════════════════════════════════════════════════
 function generateDocPDF(d){
   const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','letter');
-  const pageWidth=216, pageHeight=279, m=22;
-  const textWidth = 160; // Ancho conservador: 216 - 22*2 - 12 extra = 160
+  const pageWidth=216, pageHeight=279, m=25;
+  const textWidth = 150; // Ancho muy conservador para evitar cortes
   let y=6;
   
   // Header
@@ -1657,7 +1649,7 @@ function generateDocPDF(d){
 
   const dd=d.data||{};
   const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
-  const maxY = pageHeight - 28;
+  const maxY = pageHeight - 40; // Espacio amplio para el footer
   
   const addFooter=(pn)=>{
     doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);
@@ -1813,32 +1805,36 @@ function generateDocPDF(d){
         }catch(e){console.log('Error adding image:',e);}
       });
     }
-    // Firmas - máximo 3 por fila
+    // Firmas - 2 por fila
     if(dd.firmas?.length){
-      checkPage();
+      y += 10;
+      if(y > maxY - 50) { newPage(); }
       sec('Firmas');
-      y+=8;
-      const firmasPerRow = 3;
-      const firmaW = (textWidth)/firmasPerRow;
+      y += 12;
+      const firmasPerRow = 2;
+      const firmaW = textWidth / firmasPerRow;
+      const lineW = 55; // Línea de firma
+      
       dd.firmas.forEach((f,i)=>{
-        const row = Math.floor(i/firmasPerRow);
         const col = i % firmasPerRow;
-        if(col === 0 && i > 0) y += 28;
-        if(y > 250){checkPage();y+=10;}
+        if(col === 0 && i > 0) y += 35; // Espacio entre filas
+        if(y > maxY - 40){ newPage(); y += 20; }
+        
         const cx = m + firmaW*col + firmaW/2;
         doc.setDrawColor(74,74,74);
         doc.setLineWidth(.4);
-        doc.line(cx-28,y,cx+28,y);
-        doc.setFontSize(8);
-        doc.setTextColor(74,74,74);
+        doc.line(cx - lineW/2, y, cx + lineW/2, y);
+        doc.setFontSize(9);
+        doc.setTextColor(50,50,50);
         doc.setFont('helvetica','bold');
-        const nombreLines = doc.splitTextToSize(f.nombre||'',56);
-        doc.text(nombreLines,cx,y+4,{align:'center'});
-        doc.setFontSize(7);
+        const nombreLines = doc.splitTextToSize(f.nombre||'', lineW);
+        doc.text(nombreLines, cx, y+5, {align:'center'});
+        doc.setFontSize(8);
         doc.setFont('helvetica','normal');
         doc.setTextColor(113,128,150);
-        doc.text(f.cargo||'',cx,y+4+nombreLines.length*3.5,{align:'center'});
+        doc.text(f.cargo||'', cx, y+5+nombreLines.length*4, {align:'center'});
       });
+      y += 25;
     }
     
   } else if(d.type==='aviso'){
