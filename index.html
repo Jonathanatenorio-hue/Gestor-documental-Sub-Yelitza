@@ -1583,9 +1583,16 @@ function downloadDocWord(id){const docs=loadDocs();const d=docs.find(x=>x.id===i
 // ══════════════════════════════════════════════════════
 function generateDocPDF(d){
   const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','letter');
-  const pageWidth=215.9, pageHeight=279.4, m=20;
-  const contentWidth = pageWidth - (m * 2); // Ancho disponible para contenido
+  const pageWidth=216, pageHeight=279, m=18;
+  const contentWidth = pageWidth - (m * 2) - 5; // Ancho disponible para contenido con margen extra
   let y=6;
+  
+  // Fuente base para todo el documento
+  const setBaseFont = () => {
+    doc.setFontSize(10);
+    doc.setTextColor(40,40,40);
+    doc.setFont('helvetica','normal');
+  };
   
   // Header
   doc.setFillColor(240,247,252);doc.rect(0,0,pageWidth,26,'F');
@@ -1597,31 +1604,38 @@ function generateDocPDF(d){
 
   const dd=d.data||{};
   const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
-  const maxY = pageHeight - 30; // Límite inferior antes del footer
+  const maxY = pageHeight - 28;
   
   const addFooter=(pn)=>{
     doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);
-    doc.line(m, pageHeight-20, pageWidth-m, pageHeight-20);
+    doc.line(m, pageHeight-18, pageWidth-m, pageHeight-18);
     doc.setFontSize(7);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');
-    doc.text(`ExpertCell | ${typeNames[d.type]||d.type} | ${d.folio||''} | Pág ${pn}`, pageWidth/2, pageHeight-14, {align:'center'});
+    doc.text(`ExpertCell | ${typeNames[d.type]||d.type} | ${d.folio||''} | Pág ${pn}`, pageWidth/2, pageHeight-12, {align:'center'});
   };
   
   const checkPage=()=>{
     if(y > maxY){
       addFooter(doc.getNumberOfPages());
       doc.addPage();
-      y=20;
+      y=18;
       return true;
     }
     return false;
   };
   
-  const sec=(title)=>{checkPage();doc.setFontSize(11);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text(title,m,y);y+=6;};
+  const sec=(title)=>{
+    checkPage();
+    doc.setFontSize(11);
+    doc.setTextColor(27,117,187);
+    doc.setFont('helvetica','bold');
+    doc.text(title,m,y);
+    y+=6;
+  };
   
   const tblOpts={
     margin:{left:m,right:m},
     theme:'grid',
-    styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3,overflow:'linebreak'},
+    styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3,overflow:'linebreak',font:'helvetica',textColor:[40,40,40]},
     headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},
     alternateRowStyles:{fillColor:[245,247,250]},
     tableWidth: contentWidth
@@ -1642,7 +1656,7 @@ function generateDocPDF(d){
       .replace(/&lt;/gi, '<')
       .replace(/&gt;/gi, '>')
       .replace(/&quot;/gi, '"')
-      .replace(/\n\s*\n\s*\n/g, '\n\n') // Max 2 saltos de línea seguidos
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
       .trim();
     return text;
   };
@@ -1652,9 +1666,8 @@ function generateDocPDF(d){
     const cleanText = stripHtml(text);
     if(!cleanText) return;
     
-    doc.setFontSize(10);
-    doc.setTextColor(50,50,50);
-    doc.setFont('helvetica','normal');
+    // Siempre resetear la fuente antes de escribir texto
+    setBaseFont();
     
     // Dividir el texto en líneas que quepan en el ancho
     const lines = doc.splitTextToSize(cleanText, contentWidth);
@@ -1664,7 +1677,8 @@ function generateDocPDF(d){
       if(y > maxY){
         addFooter(doc.getNumberOfPages());
         doc.addPage();
-        y = 20;
+        y = 18;
+        setBaseFont(); // Resetear fuente después de nueva página
       }
       doc.text(line, m, y);
       y += lineHeight;
