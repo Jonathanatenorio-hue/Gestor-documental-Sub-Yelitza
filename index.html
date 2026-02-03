@@ -292,6 +292,7 @@ function renderDashboard(){
         <td><span class="badge ${statusClass}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
         <td>${evid}</td>
         <td>
+          <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')" title="Editar">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')" title="Ver detalle">👁️</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')" title="PDF">📕</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')" title="Word">📄</button>
@@ -338,6 +339,7 @@ function renderHistorial(type){
         <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
         <td>${ev}</td>
         <td>
+          <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')">✏️</button>
           <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')">👁️</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')">📕</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')">📄</button>
@@ -437,6 +439,165 @@ function changeStatus(id, status){
 function deleteDoc(id){
   if(!confirm('¿Eliminar este documento permanentemente?'))return;
   const docs=loadDocs().filter(x=>x.id!==id);saveDocs(docs);toast('🗑️ Documento eliminado','info');showPage(currentPage);
+}
+
+// ══════════════════════════════════════════════════════
+// EDIT DOCUMENT
+// ══════════════════════════════════════════════════════
+let editingDocId = null;
+
+function editDoc(id){
+  const docs = loadDocs();
+  const d = docs.find(x => x.id === id);
+  if(!d) return;
+  
+  editingDocId = id;
+  newDocType = d.type;
+  showPage('nuevo');
+  
+  // Wait for form to render then populate
+  setTimeout(() => {
+    const dd = d.data || {};
+    
+    if(d.type === 'minuta'){
+      document.getElementById('f-folio').value = d.folio || '';
+      document.getElementById('f-tipo').value = dd.tipo || '';
+      document.getElementById('f-fecha').value = dd.fecha || '';
+      document.getElementById('f-hinicio').value = dd.hinicio || '';
+      document.getElementById('f-hfin').value = dd.hfin || '';
+      document.getElementById('f-ubicacion').value = dd.ubicacion || '';
+      document.getElementById('f-convoca').value = dd.convoca || '';
+      document.getElementById('f-elabora').value = dd.elabora || '';
+      document.getElementById('f-objetivo').value = dd.objetivo || '';
+      document.getElementById('f-descripcion').value = dd.descripcion || '';
+      document.getElementById('f-obs').value = dd.observaciones || '';
+      document.getElementById('f-tabla').value = dd.tabla || '';
+      if(dd.proxReunion){
+        document.getElementById('f-proxfecha').value = dd.proxReunion.fecha || '';
+        document.getElementById('f-proxhora').value = dd.proxReunion.hora || '';
+        document.getElementById('f-proxlugar').value = dd.proxReunion.lugar || '';
+        document.getElementById('f-proxtemas').value = dd.proxReunion.temas || '';
+      }
+      if(dd.asistentes?.length){formAsistentes = dd.asistentes; renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',ph:'Nombre completo'},{key:'cargo',label:'Cargo',ph:'Cargo/Área'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');}
+      if(dd.desarrollo?.length){formDesarrollo = dd.desarrollo; renderMiniTable('tbl-desarrollo',[{key:'tema',label:'Tema',ph:'Tema'},{key:'descripcion',label:'Resumen',ph:'Puntos clave...'},{key:'decision',label:'Decisión',ph:'Decisión'}],formDesarrollo,'formDesarrollo');}
+      if(dd.acuerdos?.length){formAcuerdos = dd.acuerdos; renderMiniTable('tbl-acuerdos',[{key:'compromiso',label:'Compromiso',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'},{key:'fecha',label:'Fecha',type:'date'},{key:'prioridad',label:'Prior.',type:'select',opts:['Alta','Media','Baja']},{key:'estatus',label:'Estatus',type:'select',opts:['Pendiente','En proceso','Completado']}],formAcuerdos,'formAcuerdos');}
+      if(dd.firmas?.length){formFirmasM = dd.firmas; renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasM,'formFirmasM');}
+    } else if(d.type === 'aviso'){
+      document.getElementById('f-afolio').value = d.folio || '';
+      document.getElementById('f-atipo').value = dd.tipo || '';
+      document.getElementById('f-afecha').value = dd.fecha || '';
+      document.getElementById('f-avigencia').value = dd.vigencia || '';
+      document.getElementById('f-aemitido').value = dd.emitido || '';
+      document.getElementById('f-adirigido').value = dd.dirigido || '';
+      document.getElementById('f-aprioridad').value = dd.prioridad || '';
+      document.getElementById('f-aasunto').value = dd.asunto || '';
+      document.getElementById('f-acontenido').value = dd.contenido || '';
+      document.getElementById('f-acontacto').value = dd.contacto || '';
+      document.getElementById('f-tabla').value = dd.tabla || '';
+      if(dd.acciones?.length){formAcciones = dd.acciones; renderMiniTable('tbl-acciones',[{key:'accion',label:'Acción',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre/Área'},{key:'fecha',label:'Fecha',type:'date'}],formAcciones,'formAcciones');}
+      if(dd.firmas?.length){formFirmasA = dd.firmas; renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasA,'formFirmasA');}
+    } else if(d.type === 'retroalimentacion'){
+      document.getElementById('f-rfolio').value = d.folio || '';
+      document.getElementById('f-rfecha').value = dd.fecha || '';
+      document.getElementById('f-rcolaborador').value = dd.colaborador || '';
+      document.getElementById('f-rpuesto').value = dd.puesto || '';
+      document.getElementById('f-rarea').value = dd.area || '';
+      document.getElementById('f-rsupervisor').value = dd.supervisor || '';
+      document.getElementById('f-rtipo').value = dd.tipo || '';
+      toggleEvalLlamada();
+      if(dd.tipo === 'Evaluación de llamada' && dd.evaluacionLlamada){
+        const ev = dd.evaluacionLlamada;
+        document.getElementById('f-rtiempollamada').value = ev.tiempoLlamada || '';
+        document.getElementById('f-rnumero').value = ev.numero || '';
+        document.getElementById('f-rtipificacion').value = ev.tipificacion || '';
+        document.getElementById('f-eval-saludo').value = ev.saludo || 0;
+        document.getElementById('f-eval-tono').value = ev.tono || 0;
+        document.getElementById('f-eval-sondeo').value = ev.sondeo || 0;
+        document.getElementById('f-eval-objeciones').value = ev.objeciones || 0;
+        document.getElementById('f-eval-cierre').value = ev.cierre || 0;
+        document.getElementById('f-eval-valorizacion').value = ev.valorizacion || 0;
+        document.getElementById('f-eval-monetizacion').value = ev.monetizacion || 0;
+        document.getElementById('f-eval-producto').value = ev.producto || 0;
+        document.getElementById('f-eval-fluidez').value = ev.fluidez || 0;
+        calcularEval();
+      } else {
+        document.getElementById('f-rmotivo').value = dd.motivo || '';
+        document.getElementById('f-rcontenido').value = dd.contenido || '';
+        document.getElementById('f-rcompromisos').value = dd.compromisos || '';
+        document.getElementById('f-rseguimiento').value = dd.seguimiento || '';
+      }
+      document.getElementById('f-tabla').value = dd.tabla || '';
+      if(dd.firmas?.length){formFirmasR = dd.firmas; renderMiniTable('tbl-firmasR',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasR,'formFirmasR');}
+    } else if(d.type === 'plantrabajo'){
+      document.getElementById('f-pfolio').value = d.folio || '';
+      document.getElementById('f-pfecha').value = dd.fecha || '';
+      document.getElementById('f-pcolaborador').value = dd.colaborador || '';
+      document.getElementById('f-ppuesto').value = dd.puesto || '';
+      document.getElementById('f-parea').value = dd.area || '';
+      document.getElementById('f-psupervisor').value = dd.supervisor || '';
+      document.getElementById('f-pperiodo').value = dd.periodo || '';
+      document.getElementById('f-pobjetivo').value = dd.objetivo || '';
+      document.getElementById('f-pactividades').value = dd.actividades || '';
+      document.getElementById('f-pindicadores').value = dd.indicadores || '';
+      document.getElementById('f-prevision').value = dd.revision || '';
+      document.getElementById('f-tabla').value = dd.tabla || '';
+      if(dd.firmas?.length){formFirmasP = dd.firmas; renderMiniTable('tbl-firmasP',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasP,'formFirmasP');}
+    } else if(d.type === 'actaadmin'){
+      document.getElementById('f-aafolio').value = d.folio || '';
+      document.getElementById('f-aafecha').value = dd.fecha || '';
+      document.getElementById('f-aacolaborador').value = dd.colaborador || '';
+      document.getElementById('f-aapuesto').value = dd.puesto || '';
+      document.getElementById('f-aaarea').value = dd.area || '';
+      document.getElementById('f-aaantiguedad').value = dd.antiguedad || '';
+      document.getElementById('f-aatipo').value = dd.tipoFalta || '';
+      document.getElementById('f-aanumero').value = dd.numero || '';
+      document.getElementById('f-aahechos').value = dd.hechos || '';
+      document.getElementById('f-aafundamento').value = dd.fundamento || '';
+      document.getElementById('f-aasancion').value = dd.sancion || '';
+      document.getElementById('f-aacompromiso').value = dd.compromiso || '';
+      document.getElementById('f-aaacuerdos').value = dd.acuerdos || '';
+      document.getElementById('f-aarevision').value = dd.fechaRevision || '';
+      document.getElementById('f-aaresponsable').value = dd.responsableSeguimiento || '';
+      document.getElementById('f-aafirma1').value = dd.firmaColaborador || '';
+      document.getElementById('f-aafirma2').value = dd.firmaSupervisor || '';
+      document.getElementById('f-aafirma3').value = dd.firmaEmite || '';
+      document.getElementById('f-aafirma4').value = dd.firmaTestigo || '';
+      document.getElementById('f-tabla').value = dd.tabla || '';
+    } else if(d.type === 'baja'){
+      document.getElementById('f-bfolio').value = d.folio || '';
+      document.getElementById('f-bfecha').value = dd.fecha || '';
+      document.getElementById('f-bcolaborador').value = dd.colaborador || '';
+      document.getElementById('f-bpuesto').value = dd.puesto || '';
+      document.getElementById('f-barea').value = dd.area || '';
+      document.getElementById('f-bingreso').value = dd.ingreso || '';
+      document.getElementById('f-bultimo').value = dd.ultimo || '';
+      document.getElementById('f-bsueldo').value = dd.sueldo || '';
+      document.getElementById('f-btipo').value = dd.tipo || '';
+      document.getElementById('f-bmotivo').value = dd.motivo || '';
+      document.getElementById('f-bobs').value = dd.observaciones || '';
+      document.getElementById('f-bentrega').value = dd.entrega || '';
+      if(dd.finiquito){
+        document.getElementById('f-bdias').value = dd.finiquito.dias || 0;
+        document.getElementById('f-bvacaciones').value = dd.finiquito.vacaciones || 0;
+        document.getElementById('f-baguinaldo').value = dd.finiquito.aguinaldo || 0;
+        document.getElementById('f-bprima').value = dd.finiquito.primaPct || 25;
+        document.getElementById('f-bcomisiones').value = dd.finiquito.comisiones || 0;
+        document.getElementById('f-botros').value = dd.finiquito.otros || 0;
+        calcularFiniquito();
+      }
+      document.getElementById('f-bpagado').checked = dd.pagado || false;
+      document.getElementById('f-bfechapago').value = dd.fechaPago || '';
+      document.getElementById('f-bmetodo').value = dd.metodoPago || '';
+      document.getElementById('f-tabla').value = dd.tabla || '';
+      if(dd.firmas?.length){formFirmasB = dd.firmas; renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasB,'formFirmasB');}
+    }
+    
+    // Load anexos if any
+    if(dd.anexos?.length){
+      anexosData = dd.anexos;
+      renderAnexosPreview();
+    }
+  }, 100);
 }
 
 // ══════════════════════════════════════════════════════
@@ -832,7 +993,13 @@ function renderNuevo(){
   resetFormArrays();
   anexosData = [];
   docsBajaData = [];
-  let h=`
+  if(!editingDocId) editingDocId = null; // Reset only if not editing
+  const editingBanner = editingDocId ? `<div style="background:#FFF3CD;border:1px solid #FFECB5;padding:12px 16px;border-radius:8px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:20px">✏️</span>
+    <div><strong>Modo edición</strong><br><span style="font-size:12px;color:#856404">Estás editando un documento existente. Los cambios reemplazarán la versión anterior.</span></div>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="editingDocId=null;renderNuevo()">Cancelar edición</button>
+  </div>` : '';
+  let h=`${editingBanner}
   <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
     <button class="btn ${newDocType==='minuta'?'btn-pri':'btn-ghost'}" onclick="newDocType='minuta';renderNuevo()">📋 Minuta</button>
     <button class="btn ${newDocType==='aviso'?'btn-pri':'btn-ghost'}" onclick="newDocType='aviso';renderNuevo()">📢 Aviso</button>
@@ -1301,14 +1468,34 @@ function collectDocData(){
 
 function saveAndDownload(mode){
   const docData=collectDocData();
-  docData.id=genId();docData.createdAt=Date.now();docData.evidence=null;docData.evidenceDate=null;
-  const docs=loadDocs();docs.push(docData);saveDocs(docs);
+  let docs=loadDocs();
+  
+  if(editingDocId){
+    // Editing existing document
+    const idx = docs.findIndex(d => d.id === editingDocId);
+    if(idx !== -1){
+      docData.id = editingDocId;
+      docData.createdAt = docs[idx].createdAt;
+      docData.evidence = docs[idx].evidence;
+      docData.evidenceDate = docs[idx].evidenceDate;
+      docData.status = docs[idx].status;
+      docs[idx] = docData;
+      toast('✅ Documento actualizado'+(mode!=='save'?' y descargado':''));
+    }
+    editingDocId = null;
+  } else {
+    // New document
+    docData.id=genId();docData.createdAt=Date.now();docData.evidence=null;docData.evidenceDate=null;
+    docs.push(docData);
+    toast('✅ Documento guardado'+(mode!=='save'?' y descargado':''));
+  }
+  
+  saveDocs(docs);
   anexosData = []; // Reset anexos after save
   docsBajaData = []; // Reset docs baja after save
   uploadToDrive(docData);
   if(mode==='pdf') generateDocPDF(docData);
   else if(mode==='word') generateDocWord(docData);
-  toast('✅ Documento guardado'+(mode!=='save'?' y descargado':''));
   setTimeout(()=>showPage('dashboard'),500);
 }
 
@@ -1355,8 +1542,16 @@ function generateDocPDF(d){
     if(dd.objetivo){sec('Objetivo');addText(dd.objetivo);}
     if(dd.descripcion){sec('Descripción');addText(dd.descripcion);}
     if(dd.asistentes?.length){sec('Lista de Asistencia');doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Asistencia','Firma']],body:dd.asistentes.map((a,i)=>[i+1,a.nombre,a.cargo,a.asistencia,''])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.desarrollo?.length){sec('Desarrollo');doc.autoTable({startY:y,...tblOpts,head:[['#','Tema','Descripción','Decisión']],body:dd.desarrollo.map((x,i)=>[i+1,x.tema,x.descripcion,x.decision])});y=doc.lastAutoTable.finalY+6;}
-    if(dd.acuerdos?.length){sec('Acuerdos y Compromisos');doc.autoTable({startY:y,...tblOpts,head:[['#','Compromiso','Responsable','Fecha','Prioridad','Estatus']],body:dd.acuerdos.map((a,i)=>[i+1,a.compromiso,a.responsable,a.fecha,a.prioridad,a.estatus])});y=doc.lastAutoTable.finalY+6;}
+    if(dd.desarrollo?.length){
+      sec('Desarrollo');
+      doc.autoTable({startY:y,...tblOpts,head:[['#','Tema','Descripción','Decisión']],body:dd.desarrollo.map((x,i)=>[i+1,x.tema,x.descripcion,x.decision]),columnStyles:{1:{cellWidth:35},2:{cellWidth:60},3:{cellWidth:50}}});
+      y=doc.lastAutoTable.finalY+6;
+    }
+    if(dd.acuerdos?.length){
+      sec('Acuerdos y Compromisos');
+      doc.autoTable({startY:y,...tblOpts,head:[['#','Compromiso','Responsable','Fecha','Prior.','Estatus']],body:dd.acuerdos.map((a,i)=>[i+1,a.compromiso,a.responsable,fmtDate(a.fecha),a.prioridad,a.estatus]),columnStyles:{0:{cellWidth:8},1:{cellWidth:55},2:{cellWidth:35},3:{cellWidth:22},4:{cellWidth:18},5:{cellWidth:22}}});
+      y=doc.lastAutoTable.finalY+6;
+    }
     if(dd.proxReunion?.fecha||dd.proxReunion?.hora){sec('Próxima Reunión');doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:38,fillColor:[232,242,250],fontStyle:'bold',textColor:[13,79,128]}},body:[['Fecha:',fmtDate(dd.proxReunion.fecha)||'—'],['Hora:',dd.proxReunion.hora||'—'],['Lugar:',dd.proxReunion.lugar||'—'],['Pendientes:',dd.proxReunion.temas||'—']]});y=doc.lastAutoTable.finalY+6;}
     if(dd.observaciones){sec('Observaciones');addText(dd.observaciones);}
     if(dd.tabla){sec('Información Adicional');addText(dd.tabla);}
@@ -1382,7 +1577,33 @@ function generateDocPDF(d){
         }catch(e){console.log('Error adding image:',e);}
       });
     }
-    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
+    // Firmas - máximo 3 por fila
+    if(dd.firmas?.length){
+      checkPage();
+      sec('Firmas');
+      y+=8;
+      const firmasPerRow = 3;
+      const firmaW = (w-m*2)/firmasPerRow;
+      dd.firmas.forEach((f,i)=>{
+        const row = Math.floor(i/firmasPerRow);
+        const col = i % firmasPerRow;
+        if(col === 0 && i > 0) y += 28;
+        if(y > 250){checkPage();y+=10;}
+        const cx = m + firmaW*col + firmaW/2;
+        doc.setDrawColor(74,74,74);
+        doc.setLineWidth(.4);
+        doc.line(cx-28,y,cx+28,y);
+        doc.setFontSize(8);
+        doc.setTextColor(74,74,74);
+        doc.setFont('helvetica','bold');
+        const nombreLines = doc.splitTextToSize(f.nombre||'',56);
+        doc.text(nombreLines,cx,y+4,{align:'center'});
+        doc.setFontSize(7);
+        doc.setFont('helvetica','normal');
+        doc.setTextColor(113,128,150);
+        doc.text(f.cargo||'',cx,y+4+nombreLines.length*3.5,{align:'center'});
+      });
+    }
     
   } else if(d.type==='aviso'){
     doc.setFillColor(13,79,128);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
