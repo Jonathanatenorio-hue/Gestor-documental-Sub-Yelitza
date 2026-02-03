@@ -1661,6 +1661,8 @@ async function syncFromDrive(){
         // Ensure status is set based on evidence
         if(d.evidenceUrl || d.evidence){
           d.status = 'firmado';
+        } else if(!d.status){
+          d.status = 'pendiente';
         }
         return d;
       });
