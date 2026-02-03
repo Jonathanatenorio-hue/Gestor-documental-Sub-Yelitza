@@ -1163,19 +1163,29 @@ async function syncFromDrive(){
     const response = await fetch(cfg.url + '?action=getAll');
     const data = await response.json();
     if(data.success && data.documents){
-      // Merge Drive docs with local, Drive wins for conflicts
-      const localDocs = loadDocs();
-      const localIds = new Set(localDocs.map(d => d.id));
+      // Drive is source of truth - replace local with Drive data
       const driveDocs = data.documents;
+      const localDocs = loadDocs();
       
-      // Add docs from Drive that aren't local
+      // Create map of drive docs by ID
+      const driveMap = new Map(driveDocs.map(d => [d.id, d]));
+      
+      // Update local docs with Drive versions, keep local-only docs
+      const mergedDocs = [];
+      
+      // First add all Drive docs (they have priority)
       driveDocs.forEach(dd => {
-        if(!localIds.has(dd.id)){
-          localDocs.push(dd);
+        mergedDocs.push(dd);
+      });
+      
+      // Then add local docs that aren't in Drive (not yet synced)
+      localDocs.forEach(ld => {
+        if(!driveMap.has(ld.id)){
+          mergedDocs.push(ld);
         }
       });
       
-      saveDocs(localDocs);
+      saveDocs(mergedDocs);
       updateBadges();
       if(currentPage === 'dashboard') renderDashboard();
     }
