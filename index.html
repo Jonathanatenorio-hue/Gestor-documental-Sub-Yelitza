@@ -509,6 +509,49 @@ function uploadEvidenceToDrive(docId, base64, folio){
 }
 
 // ══════════════════════════════════════════════════════
+// ANEXOS (IMAGES)
+// ══════════════════════════════════════════════════════
+let anexosData = [];
+
+function handleAnexos(input){
+  const files = input.files;
+  if(!files.length) return;
+  
+  Array.from(files).forEach(file => {
+    if(file.size > 5*1024*1024){
+      toast('Imagen muy grande (máx 5MB)', 'err');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e){
+      anexosData.push({name: file.name, data: e.target.result});
+      renderAnexosPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderAnexosPreview(){
+  const container = document.getElementById('anexos-preview');
+  if(!container) return;
+  let h = '';
+  anexosData.forEach((img, i) => {
+    h += `<div class="file-preview" style="margin-bottom:8px">
+      <img src="${img.data}" style="width:80px;height:80px;object-fit:cover;border-radius:6px">
+      <div class="info"><div class="name">${img.name}</div></div>
+      <button type="button" onclick="removeAnexo(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:18px">✕</button>
+    </div>`;
+  });
+  container.innerHTML = h;
+}
+
+function removeAnexo(i){
+  anexosData.splice(i, 1);
+  renderAnexosPreview();
+}
+
+// ══════════════════════════════════════════════════════
 // GOOGLE DRIVE INTEGRATION
 // ══════════════════════════════════════════════════════
 function renderDrive(){
@@ -669,6 +712,7 @@ function resetFormArrays(){
 
 function renderNuevo(){
   resetFormArrays();
+  anexosData = [];
   let h=`
   <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
     <button class="btn ${newDocType==='minuta'?'btn-pri':'btn-ghost'}" onclick="newDocType='minuta';renderNuevo()">📋 Minuta</button>
@@ -720,6 +764,18 @@ function renderFormContent(){
     h+=`<div class="sec-title">📌 Observaciones</div>
     <div class="fg"><textarea id="f-obs" rows="3" placeholder="Notas adicionales..."></textarea></div>`;
 
+    h+=`<div class="sec-title">📎 Anexos (Imágenes/Tablas)</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text"><b>Clic para agregar imágenes</b> o arrastra aquí</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">JPG, PNG • Puedes agregar varias</div>
+      </div>
+      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
+      <div id="anexos-preview"></div>
+    </div>
+    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
+
     h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasM"></div>`;
   } else if(newDocType==='aviso'){
     h+=`<div class="sec-title">📋 Datos del Comunicado</div>
@@ -740,6 +796,16 @@ function renderFormContent(){
     h+=`<div class="sec-title">⚡ Acciones Requeridas</div><div id="tbl-acciones"></div>`;
     h+=`<div class="sec-title">📞 Contacto</div>
     <div class="fg"><label>Contacto para dudas</label><input id="f-acontacto" placeholder="Nombre – Tel / Email"></div>`;
+    h+=`<div class="sec-title">📎 Anexos (Imágenes/Tablas)</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text"><b>Clic para agregar imágenes</b></div>
+      </div>
+      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
+      <div id="anexos-preview"></div>
+    </div>
+    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
     h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasA"></div>`;
   } else if(newDocType==='retroalimentacion'){
     h+=`<div class="sec-title">💬 Retroalimentación</div>
@@ -756,6 +822,16 @@ function renderFormContent(){
     <div class="fg"><label>Retroalimentación</label><textarea id="f-rcontenido" rows="4" placeholder="Detalle de la retroalimentación..."></textarea></div>
     <div class="fg"><label>Compromisos</label><textarea id="f-rcompromisos" rows="3" placeholder="Compromisos acordados..."></textarea></div>
     <div class="fg"><label>Seguimiento</label><input id="f-rseguimiento" placeholder="Fecha o acciones de seguimiento"></div>`;
+    h+=`<div class="sec-title">📎 Anexos</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text"><b>Clic para agregar imágenes</b></div>
+      </div>
+      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
+      <div id="anexos-preview"></div>
+    </div>
+    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
   } else if(newDocType==='plantrabajo'){
     h+=`<div class="sec-title">📊 Plan de Trabajo</div>
     <div class="grid2">
@@ -771,6 +847,16 @@ function renderFormContent(){
     <div class="fg"><label>Actividades / Metas</label><textarea id="f-pactividades" rows="4" placeholder="Lista de actividades y metas..."></textarea></div>
     <div class="fg"><label>Indicadores de Éxito</label><textarea id="f-pindicadores" rows="3" placeholder="Cómo se medirá el éxito..."></textarea></div>
     <div class="fg"><label>Fecha de Revisión</label><input type="date" id="f-prevision"></div>`;
+    h+=`<div class="sec-title">📎 Anexos</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text"><b>Clic para agregar imágenes</b></div>
+      </div>
+      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
+      <div id="anexos-preview"></div>
+    </div>
+    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
   } else if(newDocType==='actaadmin'){
     h+=`<div class="sec-title">⚠️ Acta Administrativa</div>
     <div class="grid2">
@@ -787,6 +873,16 @@ function renderFormContent(){
     <div class="fg"><label>Fundamento / Normativa</label><textarea id="f-aafundamento" rows="2" placeholder="Artículos o políticas que se incumplen..."></textarea></div>
     <div class="fg"><label>Sanción Aplicada</label><textarea id="f-aasancion" rows="2" placeholder="Sanción que se aplica..."></textarea></div>
     <div class="fg"><label>Compromiso del Colaborador</label><textarea id="f-aacompromiso" rows="2" placeholder="Compromiso del colaborador..."></textarea></div>`;
+    h+=`<div class="sec-title">📎 Anexos</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text"><b>Clic para agregar imágenes</b></div>
+      </div>
+      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
+      <div id="anexos-preview"></div>
+    </div>
+    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
   } else if(newDocType==='baja'){
     h+=`<div class="sec-title">🚪 Baja de Personal</div>
     <div class="grid2">
@@ -802,6 +898,16 @@ function renderFormContent(){
     <div class="fg"><label>Motivo de la Baja</label><textarea id="f-bmotivo" rows="3" placeholder="Motivo de la baja..."></textarea></div>
     <div class="fg"><label>Observaciones</label><textarea id="f-bobs" rows="3" placeholder="Observaciones adicionales..."></textarea></div>
     <div class="fg"><label>Entrega de Equipo/Materiales</label><textarea id="f-bentrega" rows="2" placeholder="Lista de equipo entregado..."></textarea></div>`;
+    h+=`<div class="sec-title">📎 Anexos</div>
+    <div class="fg">
+      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
+        <div class="upload-icon">🖼️</div>
+        <div class="upload-text"><b>Clic para agregar imágenes</b></div>
+      </div>
+      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
+      <div id="anexos-preview"></div>
+    </div>
+    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
   }
 
   h+=`<div style="padding:20px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
@@ -868,6 +974,9 @@ function V(id){return document.getElementById(id)?.value||'';}
 function fmtDate(d){if(!d)return'—';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
 
 function collectDocData(){
+  const anexos = anexosData.slice();
+  const tabla = V('f-tabla');
+  
   if(newDocType==='minuta'){
     return {
       type:'minuta', folio:V('f-folio'), title:`Minuta ${V('f-tipo')} – ${fmtDate(V('f-fecha'))}`,
@@ -878,7 +987,8 @@ function collectDocData(){
         asistentes:formAsistentes.filter(a=>a.nombre),orden:formOrden.filter(o=>o.tema),
         desarrollo:formDesarrollo.filter(d=>d.tema),acuerdos:formAcuerdos.filter(a=>a.compromiso),
         proxReunion:{fecha:V('f-proxfecha'),hora:V('f-proxhora'),lugar:V('f-proxlugar'),temas:V('f-proxtemas')},
-        observaciones:V('f-obs'),firmas:formFirmasM.filter(f=>f.nombre)}
+        observaciones:V('f-obs'),firmas:formFirmasM.filter(f=>f.nombre),
+        anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='aviso'){
     return {
@@ -887,7 +997,8 @@ function collectDocData(){
       data:{tipo:V('f-atipo'),fecha:V('f-afecha'),vigencia:V('f-avigencia'),
         emitido:V('f-aemitido'),dirigido:V('f-adirigido'),prioridad:V('f-aprioridad'),
         asunto:V('f-aasunto'),contenido:V('f-acontenido'),contacto:V('f-acontacto'),
-        acciones:formAcciones.filter(a=>a.accion),firmas:formFirmasA.filter(f=>f.nombre)}
+        acciones:formAcciones.filter(a=>a.accion),firmas:formFirmasA.filter(f=>f.nombre),
+        anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='retroalimentacion'){
     return {
@@ -895,7 +1006,8 @@ function collectDocData(){
       displayDate:fmtDate(V('f-rfecha')), status:'pendiente',
       data:{fecha:V('f-rfecha'),colaborador:V('f-rcolaborador'),puesto:V('f-rpuesto'),
         area:V('f-rarea'),supervisor:V('f-rsupervisor'),tipo:V('f-rtipo'),
-        motivo:V('f-rmotivo'),contenido:V('f-rcontenido'),compromisos:V('f-rcompromisos'),seguimiento:V('f-rseguimiento')}
+        motivo:V('f-rmotivo'),contenido:V('f-rcontenido'),compromisos:V('f-rcompromisos'),seguimiento:V('f-rseguimiento'),
+        anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='plantrabajo'){
     return {
@@ -903,7 +1015,8 @@ function collectDocData(){
       displayDate:fmtDate(V('f-pfecha')), status:'pendiente',
       data:{fecha:V('f-pfecha'),colaborador:V('f-pcolaborador'),puesto:V('f-ppuesto'),
         area:V('f-parea'),supervisor:V('f-psupervisor'),periodo:V('f-pperiodo'),
-        objetivo:V('f-pobjetivo'),actividades:V('f-pactividades'),indicadores:V('f-pindicadores'),revision:V('f-prevision')}
+        objetivo:V('f-pobjetivo'),actividades:V('f-pactividades'),indicadores:V('f-pindicadores'),revision:V('f-prevision'),
+        anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='actaadmin'){
     return {
@@ -911,7 +1024,8 @@ function collectDocData(){
       displayDate:fmtDate(V('f-aafecha')), status:'pendiente',
       data:{fecha:V('f-aafecha'),colaborador:V('f-aacolaborador'),puesto:V('f-aapuesto'),
         area:V('f-aaarea'),antiguedad:V('f-aaantiguedad'),tipoFalta:V('f-aatipo'),numero:V('f-aanumero'),
-        hechos:V('f-aahechos'),fundamento:V('f-aafundamento'),sancion:V('f-aasancion'),compromiso:V('f-aacompromiso')}
+        hechos:V('f-aahechos'),fundamento:V('f-aafundamento'),sancion:V('f-aasancion'),compromiso:V('f-aacompromiso'),
+        anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='baja'){
     return {
@@ -919,7 +1033,8 @@ function collectDocData(){
       displayDate:fmtDate(V('f-bfecha')), status:'pendiente',
       data:{fecha:V('f-bfecha'),colaborador:V('f-bcolaborador'),puesto:V('f-bpuesto'),
         area:V('f-barea'),ingreso:V('f-bingreso'),tipo:V('f-btipo'),ultimo:V('f-bultimo'),
-        motivo:V('f-bmotivo'),observaciones:V('f-bobs'),entrega:V('f-bentrega')}
+        motivo:V('f-bmotivo'),observaciones:V('f-bobs'),entrega:V('f-bentrega'),
+        anexos:anexos,tabla:tabla}
     };
   }
 }
@@ -928,6 +1043,7 @@ function saveAndDownload(mode){
   const docData=collectDocData();
   docData.id=genId();docData.createdAt=Date.now();docData.evidence=null;docData.evidenceDate=null;
   const docs=loadDocs();docs.push(docData);saveDocs(docs);
+  anexosData = []; // Reset anexos after save
   uploadToDrive(docData);
   if(mode==='pdf') generateDocPDF(docData);
   else if(mode==='word') generateDocWord(docData);
