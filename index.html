@@ -145,6 +145,18 @@ table.data-tbl tr:hover td{background:#F7FAFC}
 .empty-state h3{font-size:16px;color:var(--dk);margin-bottom:6px}
 .empty-state p{font-size:13px;color:var(--muted);margin-bottom:16px}
 
+/* ═══ RICH TEXT EDITOR ═══ */
+.rich-editor-wrap{border:1.5px solid var(--bdr);border-radius:8px;overflow:hidden;background:#fff}
+.rich-editor-wrap:focus-within{border-color:var(--pri)}
+.editor-toolbar{display:flex;gap:2px;padding:6px 8px;background:#f8f9fa;border-bottom:1px solid var(--bdr);flex-wrap:wrap;align-items:center}
+.editor-toolbar button{padding:5px 8px;border:none;background:none;border-radius:4px;cursor:pointer;font-size:12px;color:var(--txt);transition:.15s}
+.editor-toolbar button:hover{background:var(--lt);color:var(--pri)}
+.editor-toolbar button.active{background:var(--pri);color:#fff}
+.editor-toolbar select{padding:4px 6px;border:1px solid var(--bdr);border-radius:4px;font-size:11px;background:#fff;cursor:pointer}
+.editor-toolbar .sep{width:1px;height:20px;background:var(--bdr);margin:0 4px}
+.rich-editor{min-height:100px;padding:10px 12px;outline:none;font-size:13px;line-height:1.6;color:var(--txt);overflow-y:auto;max-height:300px}
+.rich-editor:empty:before{content:attr(data-placeholder);color:#aaa;pointer-events:none}
+
 /* ═══ TOAST ═══ */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;box-shadow:0 6px 24px rgba(0,0,0,.2);z-index:999;animation:slideUp .35s ease;color:#fff}
 .toast.ok{background:var(--ok)}.toast.err{background:var(--red)}.toast.info{background:var(--pri)}
@@ -223,6 +235,56 @@ function toast(msg, type='ok'){
   const t=document.getElementById('toast');
   t.className='toast '+type; t.textContent=msg; t.style.display='block';
   setTimeout(()=>t.style.display='none',3500);
+}
+
+// ══════════════════════════════════════════════════════
+// RICH TEXT EDITOR
+// ══════════════════════════════════════════════════════
+function createRichEditor(id, placeholder, minHeight = 100) {
+  return `<div class="rich-editor-wrap">
+    <div class="editor-toolbar">
+      <select onchange="editorFontSize(this.value)" title="Tamaño">
+        <option value="">Tamaño</option>
+        <option value="1">Pequeño</option>
+        <option value="3">Normal</option>
+        <option value="4">Grande</option>
+        <option value="5">Más grande</option>
+      </select>
+      <div class="sep"></div>
+      <button type="button" onclick="editorCmd('bold')" title="Negrita"><b>N</b></button>
+      <button type="button" onclick="editorCmd('italic')" title="Cursiva"><i>C</i></button>
+      <button type="button" onclick="editorCmd('underline')" title="Subrayado"><u>S</u></button>
+      <div class="sep"></div>
+      <button type="button" onclick="editorCmd('insertUnorderedList')" title="Lista">• Lista</button>
+      <button type="button" onclick="editorCmd('insertOrderedList')" title="Lista numerada">1. Lista</button>
+      <div class="sep"></div>
+      <button type="button" onclick="editorCmd('removeFormat')" title="Quitar formato">✕ Limpiar</button>
+    </div>
+    <div class="rich-editor" id="${id}" contenteditable="true" data-placeholder="${placeholder}" style="min-height:${minHeight}px"></div>
+  </div>`;
+}
+
+function editorCmd(cmd) {
+  document.execCommand(cmd, false, null);
+}
+
+function editorFontSize(size) {
+  if(size) document.execCommand('fontSize', false, size);
+}
+
+function getEditorContent(id) {
+  const el = document.getElementById(id);
+  return el ? el.innerHTML : '';
+}
+
+function setEditorContent(id, html) {
+  const el = document.getElementById(id);
+  if(el) el.innerHTML = html || '';
+}
+
+function getEditorText(id) {
+  const el = document.getElementById(id);
+  return el ? el.innerText : '';
 }
 
 // ══════════════════════════════════════════════════════
@@ -470,7 +532,7 @@ function editDoc(id){
       document.getElementById('f-convoca').value = dd.convoca || '';
       document.getElementById('f-elabora').value = dd.elabora || '';
       document.getElementById('f-objetivo').value = dd.objetivo || '';
-      document.getElementById('f-descripcion').value = dd.descripcion || '';
+      setEditorContent('f-descripcion', dd.descripcion || '');
       document.getElementById('f-obs').value = dd.observaciones || '';
       document.getElementById('f-tabla').value = dd.tabla || '';
       if(dd.proxReunion){
@@ -1033,7 +1095,7 @@ function renderFormContent(){
       <div class="fg"><label>Elabora minuta</label><input id="f-elabora" placeholder="Nombre"></div>
     </div>
     <div class="fg"><label>Objetivo</label><textarea id="f-objetivo" rows="2" placeholder="Propósito de la reunión..."></textarea></div>
-    <div class="fg"><label>Descripción</label><textarea id="f-descripcion" rows="4" placeholder="Redacta el tema de la minuta..."></textarea></div>`;
+    <div class="fg"><label>Descripción</label>${createRichEditor('f-descripcion', 'Redacta el tema de la minuta...', 150)}</div>`;
 
     h+=`<div class="sec-title">👥 Lista de Asistencia</div><div id="tbl-asist"></div>`;
     h+=`<div class="sec-title">💬 Desarrollo</div><div id="tbl-desarrollo"></div>`;
@@ -1361,7 +1423,19 @@ function removeFormRow(ref,i,cid,colsB64){
 // ══════════════════════════════════════════════════════
 // SAVE DOCUMENT
 // ══════════════════════════════════════════════════════
-function V(id){return document.getElementById(id)?.value||'';}
+function V(id){
+  const el = document.getElementById(id);
+  if(!el) return '';
+  // Check if it's a contenteditable div (rich editor)
+  if(el.hasAttribute('contenteditable')) return el.innerHTML || '';
+  return el.value || '';
+}
+function VText(id){
+  const el = document.getElementById(id);
+  if(!el) return '';
+  if(el.hasAttribute('contenteditable')) return el.innerText || '';
+  return el.value || '';
+}
 function fmtDate(d){if(!d)return'—';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
 
 function collectDocData(){
@@ -1526,14 +1600,32 @@ function generateDocPDF(d){
   const sec=(title)=>{checkPage();doc.setFontSize(11);doc.setTextColor(27,117,187);doc.setFont('helvetica','bold');doc.text(title,m,y);y+=6;};
   const tblOpts={margin:{left:m,right:m},theme:'grid',styles:{fontSize:9,cellPadding:2.5,lineColor:[204,204,204],lineWidth:.3,overflow:'linebreak'},headStyles:{fillColor:[13,79,128],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[245,247,250]}};
   
-  // Improved addText with proper page breaks
+  // Improved addText with proper page breaks and HTML handling
+  const stripHtml = (html) => {
+    if(!html) return '';
+    // Convert br and div to newlines
+    let text = html.replace(/<br\s*\/?>/gi, '\n')
+                   .replace(/<\/div>/gi, '\n')
+                   .replace(/<\/p>/gi, '\n')
+                   .replace(/<\/li>/gi, '\n')
+                   .replace(/<li>/gi, '• ')
+                   .replace(/<[^>]+>/g, '');
+    // Decode HTML entities
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value.trim();
+  };
+  
   const addText=(text)=>{
     if(!text)return;
+    const cleanText = stripHtml(text);
+    if(!cleanText) return;
+    
     doc.setFontSize(9);
     doc.setTextColor(74,74,74);
     doc.setFont('helvetica','normal');
     const maxWidth = w - m*2;
-    const lines = doc.splitTextToSize(text, maxWidth);
+    const lines = doc.splitTextToSize(cleanText, maxWidth);
     const lineHeight = 4.2;
     
     lines.forEach((line, i) => {
