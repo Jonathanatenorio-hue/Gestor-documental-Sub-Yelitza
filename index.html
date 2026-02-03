@@ -1416,6 +1416,8 @@ function generateDocPDF(d){
         }catch(e){console.log('Error adding image:',e);}
       });
     }
+    // Firmas aviso
+    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
     
   } else if(d.type==='retroalimentacion'){
     doc.setFillColor(46,125,50);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
