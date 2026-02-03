@@ -811,6 +811,9 @@ let formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatu
 let formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formAcciones=[{accion:'',responsable:'',fecha:''}];
 let formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+let formFirmasR=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+let formFirmasP=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+let formFirmasB=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 
 function resetFormArrays(){
   formAsistentes=[{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'}];
@@ -820,6 +823,9 @@ function resetFormArrays(){
   formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formAcciones=[{accion:'',responsable:'',fecha:''}];
   formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+  formFirmasR=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+  formFirmasP=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+  formFirmasB=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 }
 
 function renderNuevo(){
@@ -975,6 +981,7 @@ function renderFormContent(){
       <div id="anexos-preview"></div>
     </div>
     <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
+    h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasR"></div>`;
   } else if(newDocType==='plantrabajo'){
     h+=`<div class="sec-title">📊 Plan de Trabajo</div>
     <div class="grid2">
@@ -1000,6 +1007,7 @@ function renderFormContent(){
       <div id="anexos-preview"></div>
     </div>
     <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
+    h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasP"></div>`;
   } else if(newDocType==='actaadmin'){
     h+=`<div class="sec-title">⚠️ Acta Administrativa</div>
     <div class="grid2">
@@ -1112,6 +1120,7 @@ function renderFormContent(){
       <div id="anexos-preview"></div>
     </div>
     <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
+    h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasB"></div>`;
   }
 
   h+=`<div style="padding:20px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
@@ -1127,11 +1136,17 @@ function renderFormContent(){
       renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',ph:'Nombre completo'},{key:'cargo',label:'Cargo',ph:'Cargo/Área'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');
       renderMiniTable('tbl-orden',[{key:'horario',label:'Horario',ph:'HH:MM'},{key:'tema',label:'Tema',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'}],formOrden,'formOrden');
       renderMiniTable('tbl-desarrollo',[{key:'tema',label:'Tema',ph:'Tema'},{key:'descripcion',label:'Resumen',ph:'Puntos clave...'},{key:'decision',label:'Decisión',ph:'Decisión'}],formDesarrollo,'formDesarrollo');
-      renderMiniTable('tbl-acuerdos',[{key:'compromiso',label:'Compromiso',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'},{key:'fecha',label:'Fecha',ph:'DD/MM'},{key:'prioridad',label:'Prior.',type:'select',opts:['Alta','Media','Baja']},{key:'estatus',label:'Estatus',type:'select',opts:['Pendiente','En proceso','Completado']}],formAcuerdos,'formAcuerdos');
+      renderMiniTable('tbl-acuerdos',[{key:'compromiso',label:'Compromiso',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'},{key:'fecha',label:'Fecha',type:'date'},{key:'prioridad',label:'Prior.',type:'select',opts:['Alta','Media','Baja']},{key:'estatus',label:'Estatus',type:'select',opts:['Pendiente','En proceso','Completado']}],formAcuerdos,'formAcuerdos');
       renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasM,'formFirmasM');
-    } else {
-      renderMiniTable('tbl-acciones',[{key:'accion',label:'Acción',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre/Área'},{key:'fecha',label:'Fecha',ph:'DD/MM'}],formAcciones,'formAcciones');
+    } else if(newDocType==='aviso'){
+      renderMiniTable('tbl-acciones',[{key:'accion',label:'Acción',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre/Área'},{key:'fecha',label:'Fecha',type:'date'}],formAcciones,'formAcciones');
       renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasA,'formFirmasA');
+    } else if(newDocType==='retroalimentacion'){
+      renderMiniTable('tbl-firmasR',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasR,'formFirmasR');
+    } else if(newDocType==='plantrabajo'){
+      renderMiniTable('tbl-firmasP',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasP,'formFirmasP');
+    } else if(newDocType==='baja'){
+      renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasB,'formFirmasB');
     }
   },0);
 }
@@ -1148,6 +1163,10 @@ function renderMiniTable(containerId, cols, data, ref){
         h+='<td><select onchange="updateFormRow(\''+ref+'\','+i+',\''+col.key+'\',this.value)">';
         col.opts.forEach(o=>h+=`<option${row[col.key]===o?' selected':''}>${o}</option>`);
         h+='</select></td>';
+      } else if(col.type==='date'){
+        h+=`<td><input type="date" value="${row[col.key]||''}" onchange="updateFormRow('${ref}',${i},'${col.key}',this.value)"></td>`;
+      } else if(col.type==='time'){
+        h+=`<td><input type="time" value="${row[col.key]||''}" onchange="updateFormRow('${ref}',${i},'${col.key}',this.value)"></td>`;
       } else {
         h+=`<td><input value="${row[col.key]||''}" placeholder="${col.ph||''}" oninput="updateFormRow('${ref}',${i},'${col.key}',this.value)"></td>`;
       }
@@ -1159,7 +1178,7 @@ function renderMiniTable(containerId, cols, data, ref){
 }
 
 function getFormRef(ref){
-  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formFirmasM,formAcciones,formFirmasA};
+  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formFirmasM,formAcciones,formFirmasA,formFirmasR,formFirmasP,formFirmasB};
   return m[ref];
 }
 function updateFormRow(ref,i,k,v){getFormRef(ref)[i][k]=v;}
@@ -1231,6 +1250,7 @@ function collectDocData(){
         area:V('f-rarea'),supervisor:V('f-rsupervisor'),tipo:tipoRetro,
         motivo:V('f-rmotivo'),contenido:V('f-rcontenido'),compromisos:V('f-rcompromisos'),seguimiento:V('f-rseguimiento'),
         evaluacionLlamada: evalData,
+        firmas:formFirmasR.filter(f=>f.nombre),
         anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='plantrabajo'){
@@ -1240,6 +1260,7 @@ function collectDocData(){
       data:{fecha:V('f-pfecha'),colaborador:V('f-pcolaborador'),puesto:V('f-ppuesto'),
         area:V('f-parea'),supervisor:V('f-psupervisor'),periodo:V('f-pperiodo'),
         objetivo:V('f-pobjetivo'),actividades:V('f-pactividades'),indicadores:V('f-pindicadores'),revision:V('f-prevision'),
+        firmas:formFirmasP.filter(f=>f.nombre),
         anexos:anexos,tabla:tabla}
     };
   } else if(newDocType==='actaadmin'){
@@ -1272,6 +1293,7 @@ function collectDocData(){
         pagado:document.getElementById('f-bpagado')?.checked||false,
         fechaPago:V('f-bfechapago'),metodoPago:V('f-bmetodo'),
         docsBaja:docsBajaData.slice(),
+        firmas:formFirmasB.filter(f=>f.nombre),
         anexos:anexos,tabla:tabla}
     };
   }
@@ -1440,6 +1462,8 @@ function generateDocPDF(d){
         }catch(e){}
       });
     }
+    // Firmas retroalimentacion
+    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
 
   } else if(d.type==='plantrabajo'){
     doc.setFillColor(21,101,192);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
@@ -1472,6 +1496,8 @@ function generateDocPDF(d){
         }catch(e){}
       });
     }
+    // Firmas plantrabajo
+    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
 
   } else if(d.type==='actaadmin'){
     doc.setFillColor(198,40,40);doc.roundedRect(m,y,w-m*2,18,3,3,'F');
@@ -1566,6 +1592,8 @@ function generateDocPDF(d){
         }catch(e){}
       });
     }
+    // Firmas baja
+    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(w-m*2)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
   }
 
   for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
