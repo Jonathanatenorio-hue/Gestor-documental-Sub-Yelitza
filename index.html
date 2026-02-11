@@ -386,6 +386,7 @@ async function addToListDrive(listName, nombre){
   try {
     const response = await fetch(cfg.url, {
       method: 'POST',
+      mode: 'no-cors',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         action: 'addToList',
@@ -393,16 +394,13 @@ async function addToListDrive(listName, nombre){
         nombre: nombre
       })
     });
-    const result = await response.json();
     
-    if(result.success){
-      await syncListasFromDrive();
-      return true;
-    } else {
-      toast(result.error || 'Error al agregar','err');
-      return false;
-    }
+    // Con no-cors no podemos leer la respuesta, esperamos un momento y resincronizamos
+    await new Promise(r => setTimeout(r, 1500));
+    await syncListasFromDrive();
+    return true;
   } catch(e){
+    console.log('Error:', e);
     toast('Error de conexión','err');
     return false;
   }
@@ -419,6 +417,7 @@ async function removeFromListDrive(listName, nombre){
   try {
     const response = await fetch(cfg.url, {
       method: 'POST',
+      mode: 'no-cors',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         action: 'removeFromList',
@@ -426,16 +425,13 @@ async function removeFromListDrive(listName, nombre){
         nombre: nombre
       })
     });
-    const result = await response.json();
     
-    if(result.success){
-      await syncListasFromDrive();
-      return true;
-    } else {
-      toast(result.error || 'Error al eliminar','err');
-      return false;
-    }
+    // Con no-cors no podemos leer la respuesta, esperamos un momento y resincronizamos
+    await new Promise(r => setTimeout(r, 1500));
+    await syncListasFromDrive();
+    return true;
   } catch(e){
+    console.log('Error:', e);
     toast('Error de conexión','err');
     return false;
   }
@@ -785,13 +781,20 @@ function deleteDoc(id){
     return;
   }
   if(!confirm('¿Eliminar este documento permanentemente?'))return;
+  
+  // Eliminar de localStorage
   const docs=loadDocs().filter(x=>x.id!==id);
   saveDocs(docs);
   
   // También eliminar de Drive si está conectado
   const cfg = loadDriveConfig();
   if(cfg.connected && cfg.url){
-    fetch(cfg.url + '?action=delete&id=' + id).catch(()=>{});
+    fetch(cfg.url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'delete', id: id})
+    }).catch(()=>{});
   }
   
   toast('🗑️ Documento eliminado','info');
