@@ -197,6 +197,7 @@ table.data-tbl tr:hover td{background:#F7FAFC}
     <button class="sb-item" onclick="showPage('bajas')"><span class="icon">🚪</span><span>Bajas</span><span class="sb-badge" id="badge-baj">0</span></button>
     <div class="sb-section">Sistema</div>
     <button class="sb-item" onclick="showPage('drive')"><span class="icon">☁️</span><span>Google Drive</span></button>
+    <button class="sb-item" onclick="accessAdmin()"><span class="icon">🔐</span><span>Administración</span></button>
   </div>
   <div class="sb-footer">ExpertCell © 2026<br>Distribuidor Autorizado AT&T</div>
 </nav>
@@ -229,9 +230,40 @@ function loadDriveConfig(){ try{return JSON.parse(localStorage.getItem(DRIVE_KEY
 function saveDriveConfig(cfg){ localStorage.setItem(DRIVE_KEY, JSON.stringify(cfg)); }
 
 // ══════════════════════════════════════════════════════
-// LISTAS DE PERSONAL
+// SISTEMA DE ROLES Y ADMIN
 // ══════════════════════════════════════════════════════
-const SUPERVISORES = [
+const ADMIN_KEY = 'ec_admin_session';
+const ADMIN_PASSWORD = 'ExpertCell2026'; // Cámbiala por la que quieras
+
+function isAdmin(){ return localStorage.getItem(ADMIN_KEY) === 'true'; }
+function setAdmin(val){ localStorage.setItem(ADMIN_KEY, val ? 'true' : 'false'); }
+
+function promptAdminLogin(){
+  const pwd = prompt('🔐 Ingresa la contraseña de administrador:');
+  if(pwd === ADMIN_PASSWORD){
+    setAdmin(true);
+    toast('✅ Modo administrador activado','ok');
+    renderNav();
+    return true;
+  } else if(pwd !== null){
+    toast('❌ Contraseña incorrecta','err');
+  }
+  return false;
+}
+
+function logoutAdmin(){
+  setAdmin(false);
+  toast('Sesión de administrador cerrada','ok');
+  renderNav();
+  showPage('dashboard');
+}
+
+// ══════════════════════════════════════════════════════
+// LISTAS DE PERSONAL (dinámicas desde localStorage)
+// ══════════════════════════════════════════════════════
+const LISTS_KEY = 'ec_listas_personal';
+
+const DEFAULT_SUPERVISORES = [
   'Marco Antonio Becerra Olguin',
   'Jessica Itzel Perez Martinez',
   'Angelica Guadalupe Cordero Costilla',
@@ -241,7 +273,7 @@ const SUPERVISORES = [
   'Nayeli Osnaya Hernandez'
 ];
 
-const PUESTOS = [
+const DEFAULT_PUESTOS = [
   'Ejecutivo de ventas',
   'Agente de mineria',
   'Supervisor Operativo',
@@ -251,7 +283,7 @@ const PUESTOS = [
   'Supervisor de base de datos'
 ];
 
-const COLABORADORES = [
+const DEFAULT_COLABORADORES = [
   'ANGELICA HERNANDEZ MENESES',
   'LIZETTE ANAHI ARIAS LIRA',
   'ERICK RAMIREZ AGUILAR',
@@ -299,6 +331,130 @@ const COLABORADORES = [
   'MARIA FERNANDA LOPEZ CERRITEÑO',
   'JESSICA ITZEL PEREZ MARTINEZ'
 ];
+
+function loadListas(){
+  // Retorna las listas locales (se actualizan desde Drive al iniciar)
+  try {
+    const saved = JSON.parse(localStorage.getItem(LISTS_KEY));
+    if(saved && saved.supervisores && saved.puestos && saved.colaboradores){
+      return saved;
+    }
+  } catch(e){}
+  return {
+    supervisores: DEFAULT_SUPERVISORES.slice(),
+    puestos: DEFAULT_PUESTOS.slice(),
+    colaboradores: DEFAULT_COLABORADORES.slice()
+  };
+}
+
+function saveListas(listas){
+  localStorage.setItem(LISTS_KEY, JSON.stringify(listas));
+}
+
+// Sincronizar listas desde Google Sheets
+async function syncListasFromDrive(){
+  const cfg = loadDriveConfig();
+  if(!cfg.connected || !cfg.url) return;
+  
+  try {
+    const response = await fetch(cfg.url + '?action=getListas');
+    const result = await response.json();
+    
+    if(result.success){
+      const listas = {
+        supervisores: result.supervisores || [],
+        colaboradores: result.colaboradores || [],
+        puestos: result.puestos || []
+      };
+      saveListas(listas);
+      initListas();
+      console.log('Listas sincronizadas desde Drive');
+    }
+  } catch(e){
+    console.log('Error sincronizando listas:', e);
+  }
+}
+
+// Agregar a lista en Google Sheets
+async function addToListDrive(listName, nombre){
+  const cfg = loadDriveConfig();
+  if(!cfg.connected || !cfg.url){
+    toast('No hay conexión con Google Drive','err');
+    return false;
+  }
+  
+  try {
+    const response = await fetch(cfg.url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        action: 'addToList',
+        lista: listName,
+        nombre: nombre
+      })
+    });
+    const result = await response.json();
+    
+    if(result.success){
+      await syncListasFromDrive();
+      return true;
+    } else {
+      toast(result.error || 'Error al agregar','err');
+      return false;
+    }
+  } catch(e){
+    toast('Error de conexión','err');
+    return false;
+  }
+}
+
+// Eliminar de lista en Google Sheets
+async function removeFromListDrive(listName, nombre){
+  const cfg = loadDriveConfig();
+  if(!cfg.connected || !cfg.url){
+    toast('No hay conexión con Google Drive','err');
+    return false;
+  }
+  
+  try {
+    const response = await fetch(cfg.url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        action: 'removeFromList',
+        lista: listName,
+        nombre: nombre
+      })
+    });
+    const result = await response.json();
+    
+    if(result.success){
+      await syncListasFromDrive();
+      return true;
+    } else {
+      toast(result.error || 'Error al eliminar','err');
+      return false;
+    }
+  } catch(e){
+    toast('Error de conexión','err');
+    return false;
+  }
+}
+
+// Variables globales que se cargan dinámicamente
+let SUPERVISORES = [];
+let PUESTOS = [];
+let COLABORADORES = [];
+
+function initListas(){
+  const listas = loadListas();
+  SUPERVISORES = listas.supervisores;
+  PUESTOS = listas.puestos;
+  COLABORADORES = listas.colaboradores;
+}
+
+// Inicializar al cargar
+initListas();
 
 function optionsList(arr, includeEmpty=true) {
   let opts = includeEmpty ? '<option value="">Seleccionar...</option>' : '';
@@ -371,12 +527,12 @@ let currentPage = 'dashboard';
 function showPage(page){
   currentPage = page;
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',actas:'Actas Administrativas',bajas:'Bajas',drive:'Configuración Google Drive'};
+  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',actas:'Actas Administrativas',bajas:'Bajas',drive:'Configuración Google Drive',admin:'Administración'};
   document.getElementById('page-title').textContent = labels[page]||'';
-  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,actas:6,bajas:7,drive:8};
+  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,actas:6,bajas:7,drive:8,admin:9};
   if(navMap[page]!==undefined) document.querySelectorAll('.sb-item')[navMap[page]]?.classList.add('active');
   updateBadges();
-  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),drive:renderDrive};
+  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),drive:renderDrive,admin:renderAdmin};
   (renderers[page]||renderDashboard)();
 }
 
@@ -624,8 +780,22 @@ function changeStatus(id, status){
 }
 
 function deleteDoc(id){
+  if(!isAdmin()){
+    toast('🔒 Solo administradores pueden eliminar documentos','err');
+    return;
+  }
   if(!confirm('¿Eliminar este documento permanentemente?'))return;
-  const docs=loadDocs().filter(x=>x.id!==id);saveDocs(docs);toast('🗑️ Documento eliminado','info');showPage(currentPage);
+  const docs=loadDocs().filter(x=>x.id!==id);
+  saveDocs(docs);
+  
+  // También eliminar de Drive si está conectado
+  const cfg = loadDriveConfig();
+  if(cfg.connected && cfg.url){
+    fetch(cfg.url + '?action=delete&id=' + id).catch(()=>{});
+  }
+  
+  toast('🗑️ Documento eliminado','info');
+  showPage(currentPage);
 }
 
 // ══════════════════════════════════════════════════════
@@ -2312,9 +2482,162 @@ async function syncFromDrive(){
   }
 }
 
+// ══════════════════════════════════════════════════════
+// ADMIN PANEL
+// ══════════════════════════════════════════════════════
+function accessAdmin(){
+  if(isAdmin()){
+    showPage('admin');
+  } else {
+    if(promptAdminLogin()){
+      showPage('admin');
+    }
+  }
+}
+
+function renderAdmin(){
+  if(!isAdmin()){
+    document.getElementById('page-content').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔐</div>
+        <h3>Acceso Restringido</h3>
+        <p>Necesitas iniciar sesión como administrador</p>
+        <button class="btn btn-pri" onclick="promptAdminLogin() && showPage('admin')">Iniciar sesión</button>
+      </div>`;
+    return;
+  }
+  
+  const listas = loadListas();
+  
+  let h = `
+  <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center">
+    <span style="background:#d4edda;color:#155724;padding:6px 12px;border-radius:20px;font-size:13px">✅ Sesión de administrador activa</span>
+    <button class="btn btn-ghost btn-sm" onclick="logoutAdmin()">Cerrar sesión</button>
+  </div>
+  
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:20px">
+    
+    <!-- SUPERVISORES -->
+    <div class="card" style="padding:20px">
+      <h3 style="margin-bottom:15px;color:var(--pri)">👔 Supervisores (${listas.supervisores.length})</h3>
+      <div style="max-height:250px;overflow-y:auto;margin-bottom:12px">
+        ${listas.supervisores.map((s,i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee">
+            <span style="font-size:13px">${s}</span>
+            <button class="btn-danger-ghost" style="font-size:11px;padding:2px 8px" onclick="removeFromList('Supervisores','${s.replace(/'/g, "\\'")}')">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="new-supervisor" placeholder="Nuevo supervisor..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px">
+        <button class="btn btn-pri btn-sm" onclick="addToList('Supervisores','new-supervisor')">Agregar</button>
+      </div>
+    </div>
+    
+    <!-- COLABORADORES -->
+    <div class="card" style="padding:20px">
+      <h3 style="margin-bottom:15px;color:var(--pri)">👥 Colaboradores (${listas.colaboradores.length})</h3>
+      <div style="max-height:250px;overflow-y:auto;margin-bottom:12px">
+        ${listas.colaboradores.map((c,i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee">
+            <span style="font-size:13px">${c}</span>
+            <button class="btn-danger-ghost" style="font-size:11px;padding:2px 8px" onclick="removeFromList('Colaboradores','${c.replace(/'/g, "\\'")}')">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="new-colaborador" placeholder="Nuevo colaborador..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px">
+        <button class="btn btn-pri btn-sm" onclick="addToList('Colaboradores','new-colaborador')">Agregar</button>
+      </div>
+    </div>
+    
+    <!-- PUESTOS -->
+    <div class="card" style="padding:20px">
+      <h3 style="margin-bottom:15px;color:var(--pri)">💼 Puestos (${listas.puestos.length})</h3>
+      <div style="max-height:250px;overflow-y:auto;margin-bottom:12px">
+        ${listas.puestos.map((p,i) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee">
+            <span style="font-size:13px">${p}</span>
+            <button class="btn-danger-ghost" style="font-size:11px;padding:2px 8px" onclick="removeFromList('Puestos','${p.replace(/'/g, "\\'")}')">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="new-puesto" placeholder="Nuevo puesto..." style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px">
+        <button class="btn btn-pri btn-sm" onclick="addToList('Puestos','new-puesto')">Agregar</button>
+      </div>
+    </div>
+    
+  </div>
+  
+  <div class="card" style="padding:20px;margin-top:20px">
+    <h3 style="margin-bottom:15px;color:var(--red)">⚠️ Zona de Peligro</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Estas acciones no se pueden deshacer:</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn" style="background:#dc3545;color:white" onclick="resetListas()">🔄 Restaurar listas predeterminadas</button>
+      <button class="btn" style="background:#dc3545;color:white" onclick="deleteAllDocs()">🗑️ Eliminar TODOS los documentos</button>
+    </div>
+  </div>
+  
+  <div class="card" style="padding:20px;margin-top:20px">
+    <h3 style="margin-bottom:15px;color:var(--pri)">🔑 Cambiar contraseña de admin</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px">La contraseña actual está definida en el código. Para cambiarla, busca <code>ADMIN_PASSWORD</code> en el archivo HTML.</p>
+    <p style="font-size:12px;background:#f8f9fa;padding:10px;border-radius:6px;font-family:monospace">const ADMIN_PASSWORD = 'TuNuevaContraseña';</p>
+  </div>`;
+  
+  document.getElementById('page-content').innerHTML = h;
+}
+
+function addToList(listName, inputId){
+  const input = document.getElementById(inputId);
+  const value = input.value.trim();
+  if(!value){
+    toast('Ingresa un nombre','err');
+    return;
+  }
+  
+  // Mostrar loading
+  toast('Guardando...','info');
+  
+  addToListDrive(listName, value).then(success => {
+    if(success){
+      toast('✅ Agregado correctamente','ok');
+      input.value = '';
+      renderAdmin();
+    }
+  });
+}
+
+function removeFromList(listName, nombre){
+  if(!confirm('¿Eliminar "' + nombre + '" de la lista?')) return;
+  
+  toast('Eliminando...','info');
+  
+  removeFromListDrive(listName, nombre).then(success => {
+    if(success){
+      toast('Eliminado de la lista','ok');
+      renderAdmin();
+    }
+  });
+}
+
+function resetListas(){
+  toast('Para restaurar las listas, edita directamente la hoja de Google Sheets','info');
+}
+
+function deleteAllDocs(){
+  if(!confirm('⚠️ ¿ELIMINAR TODOS LOS DOCUMENTOS? Esta acción no se puede deshacer.')) return;
+  if(!confirm('¿Estás COMPLETAMENTE SEGURO? Se perderán TODOS los documentos.')) return;
+  
+  saveDocs([]);
+  toast('Documentos locales eliminados. Los de Drive permanecen.','info');
+  showPage('dashboard');
+}
+
 // ═══ INIT ═══
 showPage('dashboard');
 syncFromDrive();
+syncListasFromDrive();
 </script>
 </body>
 </html>
