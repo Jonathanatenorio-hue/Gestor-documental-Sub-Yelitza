@@ -229,6 +229,83 @@ function loadDriveConfig(){ try{return JSON.parse(localStorage.getItem(DRIVE_KEY
 function saveDriveConfig(cfg){ localStorage.setItem(DRIVE_KEY, JSON.stringify(cfg)); }
 
 // ══════════════════════════════════════════════════════
+// LISTAS DE PERSONAL
+// ══════════════════════════════════════════════════════
+const SUPERVISORES = [
+  'Marco Antonio Becerra Olguin',
+  'Jessica Itzel Perez Martinez',
+  'Angelica Guadalupe Cordero Costilla',
+  'Jonathan Arturo Tenorio Del Aguila',
+  'Yelitza Jazmin Orsuna Sanchez',
+  'Perla García Mendez',
+  'Nayeli Osnaya Hernandez'
+];
+
+const PUESTOS = [
+  'Ejecutivo de ventas',
+  'Agente de mineria',
+  'Supervisor Operativo',
+  'Coordinador',
+  'Gerente',
+  'Mesa de control',
+  'Supervisor de base de datos'
+];
+
+const COLABORADORES = [
+  'ANGELICA HERNANDEZ MENESES',
+  'LIZETTE ANAHI ARIAS LIRA',
+  'ERICK RAMIREZ AGUILAR',
+  'SUEMY MARLEN MENDOZA RUIZ',
+  'PAULO SERGIO RUELAS REYES',
+  'VALERIA IDALI DELGADO SOTO',
+  'YESICA RODRIGUEZ VERGARA',
+  'BRENDA ARANTXA VAZQUEZ GARCIA',
+  'BLANCA ESTELA PEREZ TORRES',
+  'DAFNE MABEL GARCIA ROJAS',
+  'GABRIELA LOPEZ TAMAYO',
+  'MARIA GUADALUPE CERRITEÑO MONTOYA',
+  'GUILLERMO SEBASTIAN MATUS RAMIREZ',
+  'MARISOL RODRÍGUEZ GONZÁLEZ',
+  'CARLOS ALFREDO CARMONA LOPEZ',
+  'MARIA TERESA GARCIA BAZALDUA',
+  'CESAR EDUARDO QUINTANILLA BOJORQUEZ',
+  'MARLENE AIDE GALINDO PEREZ',
+  'ALAN ALEXIS LOPEZ CERRITEÑO',
+  'ERIKA DANIELA BARRERA LOZANO',
+  'IAN IVAN SANCHEZ GALLARDO',
+  'DAVID ALEJANDRO LOPEZ BALLESTEROS',
+  'SAID SALVADOR MAGAÑA POBLETE',
+  'DEBORAH YOCELYNE SPINDOLA ROJO',
+  'LLUVIA YATSURI ARELLANO TRUJILLO',
+  'KARLA PATRICIA FARFAN BENITEZ',
+  'CARLOS GABRIEL REYES MONTOYA',
+  'MIRIAM CORINA ORTIZ RIVERA',
+  'JHONATAN GONZALEZ SANTOS',
+  'AMAYRANY JOSELIN GARCIA AZUARA',
+  'KAREN ELENA CARTAS ACEITUNO',
+  'NATHALIA JUSTINE BALDERAS GARCIA',
+  'STEPHANY GUADALUPE ZEPEDA HERNANDEZ',
+  'CINTIA LIZETH OSNAYA HERNANDEZ',
+  'ANA KAREN OSNAYA HERNANDEZ',
+  'ARTURO ISAAC ROMERO SANCHEZ',
+  'TAMANY MADAHI GONZALEZ BARRIENTOS',
+  'KAREN SUAD SANCHEZ ARREDONDO',
+  'MARTHA GUADALUPE MENDEZ ESPINOZA',
+  'MONICA KARINA ZEPEDA HERNANDEZ',
+  'PERLA GARCIA MENDEZ',
+  'NAYELI OSNAYA HERNANDEZ',
+  'MARCO ANTONIO BECERRA OLGUIN',
+  'ANGELICA GUADALUPE CORDERO COSTILLA',
+  'MARIA FERNANDA LOPEZ CERRITEÑO',
+  'JESSICA ITZEL PEREZ MARTINEZ'
+];
+
+function optionsList(arr, includeEmpty=true) {
+  let opts = includeEmpty ? '<option value="">Seleccionar...</option>' : '';
+  return opts + arr.map(x => `<option>${x}</option>`).join('');
+}
+
+// ══════════════════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════════════════
 function toast(msg, type='ok'){
@@ -386,31 +463,68 @@ function renderHistorial(type){
       </select>
       <select class="filter-sel" onchange="filterByEvidence(this.value,'${type}')">
         <option value="">Con/Sin evidencia</option><option value="si">Con evidencia</option><option value="no">Sin evidencia</option>
+      </select>`;
+  
+  // Filtros adicionales para retroalimentación
+  if(type === 'retroalimentacion'){
+    h += `<select class="filter-sel" onchange="filterBySupervisor(this.value,'${type}')">
+        <option value="">Todos los supervisores</option>
+        ${SUPERVISORES.map(s => `<option value="${s}">${s}</option>`).join('')}
       </select>
-      <div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage('nuevo')">➕ Nuevo</button></div>
+      <select class="filter-sel" onchange="filterByColaborador(this.value,'${type}')">
+        <option value="">Todos los colaboradores</option>
+        ${COLABORADORES.map(c => `<option value="${c}">${c}</option>`).join('')}
+      </select>`;
+  }
+  
+  h += `<div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage('nuevo')">➕ Nuevo</button></div>
     </div>`;
 
   if(docs.length===0){
     h+=`<div class="empty-state"><div class="icon">${typeIcons[type]||'📄'}</div><h3>No hay ${typeName.toLowerCase()}</h3><p>Crea uno nuevo para comenzar.</p></div>`;
   } else {
-    h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
-    docs.forEach(d=>{
-      const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
-      const ev=(d.evidence||d.evidenceUrl)?'<span class="evidence-indicator evidence-yes">✅ Sí</span>':'<span class="evidence-indicator evidence-no">— No</span>';
-      h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${(d.evidence||d.evidenceUrl)?'si':'no'}">
-        <td><strong>${d.folio||'—'}</strong></td><td>${d.title||'—'}</td><td>${d.displayDate||'—'}</td>
-        <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
-        <td>${ev}</td>
-        <td>
-          <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')">✏️</button>
-          <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')">👁️</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')">📕</button>
-          <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')">📄</button>
-          <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')">📎</button>
-          <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
-        </td>
-      </tr>`;
-    });
+    // Encabezados especiales para retroalimentación
+    if(type === 'retroalimentacion'){
+      h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Colaborador</th><th>Supervisor</th><th>Tipo</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody>`;
+      docs.forEach(d=>{
+        const dd = d.data || {};
+        const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
+        h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${(d.evidence||d.evidenceUrl)?'si':'no'}" data-supervisor="${(dd.supervisor||'').toLowerCase()}" data-colaborador="${(dd.colaborador||'').toLowerCase()}">
+          <td><strong>${d.folio||'—'}</strong></td>
+          <td>${dd.colaborador||'—'}</td>
+          <td>${dd.supervisor||'—'}</td>
+          <td><span class="badge">${dd.tipo||'—'}</span></td>
+          <td>${d.displayDate||'—'}</td>
+          <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':'Pendiente'}</span></td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')">📕</button>
+            <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')">📎</button>
+            <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      });
+    } else {
+      h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
+      docs.forEach(d=>{
+        const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
+        const ev=(d.evidence||d.evidenceUrl)?'<span class="evidence-indicator evidence-yes">✅ Sí</span>':'<span class="evidence-indicator evidence-no">— No</span>';
+        h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${(d.evidence||d.evidenceUrl)?'si':'no'}">
+          <td><strong>${d.folio||'—'}</strong></td><td>${d.title||'—'}</td><td>${d.displayDate||'—'}</td>
+          <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
+          <td>${ev}</td>
+          <td>
+            <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')">📕</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')">📄</button>
+            <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')">📎</button>
+            <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
+          </td>
+        </tr>`;
+      });
+    }
     h+='</tbody></table>';
   }
   h+='</div>';
@@ -421,7 +535,7 @@ function renderHistorial(type){
 function filterTable(q, type){
   const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
   q=q.toLowerCase();
-  rows.forEach(r=>{r.style.display=(r.dataset.folio.includes(q)||r.dataset.title.includes(q))?'':'none';});
+  rows.forEach(r=>{r.style.display=(r.dataset.folio.includes(q)||r.dataset.title.includes(q)||(r.dataset.colaborador||'').includes(q))?'':'none';});
 }
 function filterByStatus(val, type){
   const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
@@ -430,6 +544,16 @@ function filterByStatus(val, type){
 function filterByEvidence(val, type){
   const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
   rows.forEach(r=>{r.style.display=(!val||r.dataset.evidence===val)?'':'none';});
+}
+function filterBySupervisor(val, type){
+  const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
+  val = val.toLowerCase();
+  rows.forEach(r=>{r.style.display=(!val||(r.dataset.supervisor||'').toLowerCase()===val)?'':'none';});
+}
+function filterByColaborador(val, type){
+  const rows=document.querySelectorAll(`#tbl-${type} tbody tr`);
+  val = val.toLowerCase();
+  rows.forEach(r=>{r.style.display=(!val||(r.dataset.colaborador||'').toLowerCase()===val)?'':'none';});
 }
 
 // ══════════════════════════════════════════════════════
@@ -800,11 +924,11 @@ function toggleEvalLlamada(){
 }
 
 function calcularEval(){
-  const campos = ['saludo','tono','sondeo','objeciones','cierre','valorizacion','monetizacion','producto','fluidez'];
+  const campos = ['saludo','tono','intro','info','sondeo','objeciones','valorizacion','cierre'];
   let total = 0;
   campos.forEach(c => {
     const el = document.getElementById('f-eval-'+c);
-    if(el) total += parseInt(el.value)||0;
+    if(el) total += parseFloat(el.value)||0;
   });
   const totalEl = document.getElementById('eval-total');
   const totalBigEl = document.getElementById('eval-total-big');
@@ -1091,8 +1215,8 @@ function renderFormContent(){
       <div class="fg"><label>Ubicación</label><select id="f-ubicacion"><option>Celula Neza</option><option>Celula Atlixco</option><option>Sub Yelitza Orsuna</option></select></div>
       <div class="fg"><label>Hora inicio</label><input type="time" id="f-hinicio"></div>
       <div class="fg"><label>Hora término</label><input type="time" id="f-hfin"></div>
-      <div class="fg"><label>Convocada por <span class="req">*</span></label><input id="f-convoca" placeholder="Nombre – Cargo"></div>
-      <div class="fg"><label>Elabora minuta</label><input id="f-elabora" placeholder="Nombre"></div>
+      <div class="fg"><label>Convocada por <span class="req">*</span></label><select id="f-convoca">${optionsList(SUPERVISORES)}</select></div>
+      <div class="fg"><label>Elabora minuta</label><select id="f-elabora">${optionsList(SUPERVISORES)}</select></div>
     </div>
     <div class="fg"><label>Objetivo</label><textarea id="f-objetivo" rows="2" placeholder="Propósito de la reunión..."></textarea></div>
     <div class="fg"><label>Descripción</label>${createRichEditor('f-descripcion', 'Redacta el tema de la minuta...', 150)}</div>`;
@@ -1132,7 +1256,7 @@ function renderFormContent(){
       <div class="fg"><label>Folio</label><input id="f-afolio" value="EC-AVI-${String(loadDocs().filter(d=>d.type==='aviso').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-afecha"></div>
       <div class="fg"><label>Vigencia</label><input id="f-avigencia" placeholder="Permanente / Fechas"></div>
-      <div class="fg"><label>Emitido por <span class="req">*</span></label><input id="f-aemitido" placeholder="Nombre – Cargo"></div>
+      <div class="fg"><label>Emitido por <span class="req">*</span></label><select id="f-aemitido">${optionsList(SUPERVISORES)}</select></div>
       <div class="fg"><label>Dirigido a</label><select id="f-adirigido"><option>Todo el personal</option><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option><option>Agentes de ventas</option></select></div>
     </div>
     <div class="fg"><label>Prioridad</label><select id="f-aprioridad"><option>Normal</option><option>Importante</option><option>Urgente</option></select></div>`;
@@ -1160,10 +1284,10 @@ function renderFormContent(){
     <div class="grid2">
       <div class="fg"><label>Folio</label><input id="f-rfolio" value="EC-RET-${String(loadDocs().filter(d=>d.type==='retroalimentacion').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-rfecha"></div>
-      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-rcolaborador" placeholder="Nombre del colaborador"></div>
-      <div class="fg"><label>Puesto</label><input id="f-rpuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><select id="f-rcolaborador">${optionsList(COLABORADORES)}</select></div>
+      <div class="fg"><label>Puesto</label><select id="f-rpuesto">${optionsList(PUESTOS)}</select></div>
       <div class="fg"><label>Área</label><select id="f-rarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
-      <div class="fg"><label>Supervisor</label><input id="f-rsupervisor" placeholder="Nombre del supervisor"></div>
+      <div class="fg"><label>Supervisor</label><select id="f-rsupervisor">${optionsList(SUPERVISORES)}</select></div>
     </div>
     <div class="fg"><label>Tipo de Retroalimentación</label><select id="f-rtipo" onchange="toggleEvalLlamada()"><option>Positiva</option><option>Correctiva</option><option>Desarrollo</option><option>Evaluación de llamada</option></select></div>
     
@@ -1177,22 +1301,56 @@ function renderFormContent(){
       
       <div class="sec-title">📊 Evaluación de Calidad (Total: <span id="eval-total">0</span>%)</div>
       <div style="background:#f8f9fa;padding:12px;border-radius:8px;margin-bottom:12px">
-        <div class="grid2">
-          <div class="fg"><label>Saludo (10%)</label><select id="f-eval-saludo" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
-          <div class="fg"><label>Tono de voz (10%)</label><select id="f-eval-tono" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
-          <div class="fg"><label>Sondeo de necesidades (15%)</label><select id="f-eval-sondeo" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7">7 - Parcial</option><option value="15">15 - Cumple</option></select></div>
-          <div class="fg"><label>Manejo de objeciones (15%)</label><select id="f-eval-objeciones" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7">7 - Parcial</option><option value="15">15 - Cumple</option></select></div>
-          <div class="fg"><label>Cierre de venta (15%)</label><select id="f-eval-cierre" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7">7 - Parcial</option><option value="15">15 - Cumple</option></select></div>
-          <div class="fg"><label>Valorización (10%)</label><select id="f-eval-valorizacion" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
-          <div class="fg"><label>Monetización (10%)</label><select id="f-eval-monetizacion" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
-          <div class="fg"><label>Manejo de producto (10%)</label><select id="f-eval-producto" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select></div>
-          <div class="fg"><label>Fluidez en la llamada (5%)</label><select id="f-eval-fluidez" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="2">2 - Parcial</option><option value="5">5 - Cumple</option></select></div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Saludo (5%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Se presenta mencionando su nombre, empresa que representa, genera saludo</div>
+          <select id="f-eval-saludo" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="2.5">2.5 - Parcial</option><option value="5">5 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Tono de voz (5%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Tono fluido sin muletillas y con coherencia en lo que menciona en la llamada</div>
+          <select id="f-eval-tono" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="2.5">2.5 - Parcial</option><option value="5">5 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Introducción de la llamada (10%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Ejecutivo utiliza frase de impacto para comparar la oferta nueva que se le brinda al cliente y detecta una necesidad o potencial impacto sobre el perfil de CRM detectado</div>
+          <select id="f-eval-intro" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Manejo de información (10%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Conocimiento del producto manejando información veraz y correcta</div>
+          <select id="f-eval-info" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="5">5 - Parcial</option><option value="10">10 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Sondeo de necesidades (15%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Realiza preguntas asertivas que permitan detectar qué punto puede llamar la atención del cliente</div>
+          <select id="f-eval-sondeo" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7.5">7.5 - Parcial</option><option value="15">15 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Debate de objeciones (20%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Argumenta sólidamente para persuadir al cliente basándose en las necesidades detectadas</div>
+          <select id="f-eval-objeciones" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="10">10 - Parcial</option><option value="20">20 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Valorización o monetización (15%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Crea escenarios que agreguen un valor extra a su producto o bien que genere una comparativa sobre un ahorro o impacto económico que pueda incentivar al cliente</div>
+          <select id="f-eval-valorizacion" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="7.5">7.5 - Parcial</option><option value="15">15 - Cumple</option></select>
+        </div>
+        <div class="fg" style="margin-bottom:8px">
+          <label>Cierre de venta (20%)</label>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Realiza cierres de venta constantes después de cada debate o técnica de venta empleada durante la llamada</div>
+          <select id="f-eval-cierre" onchange="calcularEval()"><option value="0">0 - No cumple</option><option value="10">10 - Parcial</option><option value="20">20 - Cumple</option></select>
         </div>
         <div style="text-align:center;margin-top:12px;padding:10px;background:var(--lt);border-radius:8px">
           <span style="font-size:24px;font-weight:700;color:var(--dk)" id="eval-total-big">0%</span>
           <div style="font-size:11px;color:var(--muted)">Calificación Total</div>
         </div>
       </div>
+      
+      <div class="sec-title">📝 Compromisos y Seguimiento</div>
+      <div class="fg"><label>Compromiso del Agente</label><textarea id="f-rcompromisoagente" rows="2" placeholder="Compromisos que asume el agente..."></textarea></div>
+      <div class="fg"><label>Compromiso del Supervisor</label><textarea id="f-rcompromisosupervisor" rows="2" placeholder="Compromisos que asume el supervisor..."></textarea></div>
+      <div class="fg"><label>Ejercicios/Material para dominar áreas de oportunidad</label><textarea id="f-rejercicios" rows="3" placeholder="Ejercicios, materiales o recursos para mejorar..."></textarea></div>
     </div>
     
     <div id="retro-normal-section">
@@ -1217,10 +1375,10 @@ function renderFormContent(){
     <div class="grid2">
       <div class="fg"><label>Folio</label><input id="f-pfolio" value="EC-PLN-${String(loadDocs().filter(d=>d.type==='plantrabajo').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-pfecha"></div>
-      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-pcolaborador" placeholder="Nombre del colaborador"></div>
-      <div class="fg"><label>Puesto</label><input id="f-ppuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><select id="f-pcolaborador">${optionsList(COLABORADORES)}</select></div>
+      <div class="fg"><label>Puesto</label><select id="f-ppuesto">${optionsList(PUESTOS)}</select></div>
       <div class="fg"><label>Área</label><select id="f-parea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
-      <div class="fg"><label>Supervisor</label><input id="f-psupervisor" placeholder="Nombre del supervisor"></div>
+      <div class="fg"><label>Supervisor</label><select id="f-psupervisor">${optionsList(SUPERVISORES)}</select></div>
     </div>
     <div class="fg"><label>Periodo</label><input id="f-pperiodo" placeholder="Ej: Febrero 2026"></div>
     <div class="fg"><label>Objetivo del Plan</label><textarea id="f-pobjetivo" rows="3" placeholder="Objetivo principal..."></textarea></div>
@@ -1243,10 +1401,11 @@ function renderFormContent(){
     <div class="grid2">
       <div class="fg"><label>Folio</label><input id="f-aafolio" value="EC-ACT-${String(loadDocs().filter(d=>d.type==='actaadmin').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-aafecha"></div>
-      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-aacolaborador" placeholder="Nombre del colaborador"></div>
-      <div class="fg"><label>Puesto</label><input id="f-aapuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><select id="f-aacolaborador">${optionsList(COLABORADORES)}</select></div>
+      <div class="fg"><label>Puesto</label><select id="f-aapuesto">${optionsList(PUESTOS)}</select></div>
       <div class="fg"><label>Área</label><select id="f-aaarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
       <div class="fg"><label>Antigüedad</label><input id="f-aaantiguedad" placeholder="Tiempo en la empresa"></div>
+      <div class="fg"><label>Supervisor</label><select id="f-aasupervisor">${optionsList(SUPERVISORES)}</select></div>
     </div>
     <div class="grid2">
       <div class="fg"><label>Tipo de Falta</label><select id="f-aatipo"><option>Falta leve</option><option>Falta grave</option><option>Falta muy grave</option></select></div>
@@ -1261,15 +1420,15 @@ function renderFormContent(){
     <div class="fg"><label>Acuerdos para continuidad</label><textarea id="f-aaacuerdos" rows="3" placeholder="Acuerdos establecidos para evaluar la continuidad del empleado..."></textarea></div>
     <div class="grid2">
       <div class="fg"><label>Fecha de revisión</label><input type="date" id="f-aarevision"></div>
-      <div class="fg"><label>Responsable de seguimiento</label><input id="f-aaresponsable" placeholder="Nombre del responsable"></div>
+      <div class="fg"><label>Responsable de seguimiento</label><select id="f-aaresponsable">${optionsList(SUPERVISORES)}</select></div>
     </div>
     
     <div class="sec-title">✍️ Firmas</div>
     <div class="grid2">
-      <div class="fg"><label>Colaborador que recibe</label><input id="f-aafirma1" placeholder="Nombre"></div>
-      <div class="fg"><label>Supervisor</label><input id="f-aafirma2" placeholder="Nombre"></div>
-      <div class="fg"><label>Quien emite el acta</label><input id="f-aafirma3" placeholder="Nombre"></div>
-      <div class="fg"><label>Testigo (opcional)</label><input id="f-aafirma4" placeholder="Nombre"></div>
+      <div class="fg"><label>Colaborador que recibe</label><select id="f-aafirma1">${optionsList(COLABORADORES)}</select></div>
+      <div class="fg"><label>Supervisor</label><select id="f-aafirma2">${optionsList(SUPERVISORES)}</select></div>
+      <div class="fg"><label>Quien emite el acta</label><select id="f-aafirma3">${optionsList(SUPERVISORES)}</select></div>
+      <div class="fg"><label>Testigo (opcional)</label><select id="f-aafirma4">${optionsList(COLABORADORES)}</select></div>
     </div>`;
     h+=`<div class="sec-title">📎 Anexos</div>
     <div class="fg">
@@ -1286,9 +1445,10 @@ function renderFormContent(){
     <div class="grid2">
       <div class="fg"><label>Folio</label><input id="f-bfolio" value="EC-BAJ-${String(loadDocs().filter(d=>d.type==='baja').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-bfecha"></div>
-      <div class="fg"><label>Colaborador <span class="req">*</span></label><input id="f-bcolaborador" placeholder="Nombre del colaborador"></div>
-      <div class="fg"><label>Puesto</label><input id="f-bpuesto" placeholder="Puesto"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><select id="f-bcolaborador">${optionsList(COLABORADORES)}</select></div>
+      <div class="fg"><label>Puesto</label><select id="f-bpuesto">${optionsList(PUESTOS)}</select></div>
       <div class="fg"><label>Área</label><select id="f-barea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
+      <div class="fg"><label>Supervisor</label><select id="f-bsupervisor">${optionsList(SUPERVISORES)}</select></div>
       <div class="fg"><label>Fecha de Ingreso</label><input type="date" id="f-bingreso"></div>
       <div class="fg"><label>Último Día Laborado</label><input type="date" id="f-bultimo"></div>
       <div class="fg"><label>Sueldo diario</label><input type="number" id="f-bsueldo" placeholder="$0.00" onchange="calcularFiniquito()"></div>
@@ -1525,16 +1685,18 @@ function collectDocData(){
         tiempoLlamada: V('f-rtiempollamada'),
         numero: V('f-rnumero'),
         tipificacion: V('f-rtipificacion'),
-        saludo: parseInt(V('f-eval-saludo'))||0,
-        tono: parseInt(V('f-eval-tono'))||0,
-        sondeo: parseInt(V('f-eval-sondeo'))||0,
-        objeciones: parseInt(V('f-eval-objeciones'))||0,
-        cierre: parseInt(V('f-eval-cierre'))||0,
-        valorizacion: parseInt(V('f-eval-valorizacion'))||0,
-        monetizacion: parseInt(V('f-eval-monetizacion'))||0,
-        producto: parseInt(V('f-eval-producto'))||0,
-        fluidez: parseInt(V('f-eval-fluidez'))||0,
-        total: calcularEval()
+        saludo: parseFloat(V('f-eval-saludo'))||0,
+        tono: parseFloat(V('f-eval-tono'))||0,
+        intro: parseFloat(V('f-eval-intro'))||0,
+        info: parseFloat(V('f-eval-info'))||0,
+        sondeo: parseFloat(V('f-eval-sondeo'))||0,
+        objeciones: parseFloat(V('f-eval-objeciones'))||0,
+        valorizacion: parseFloat(V('f-eval-valorizacion'))||0,
+        cierre: parseFloat(V('f-eval-cierre'))||0,
+        total: calcularEval(),
+        compromisoAgente: V('f-rcompromisoagente'),
+        compromisoSupervisor: V('f-rcompromisosupervisor'),
+        ejercicios: V('f-rejercicios')
       };
     }
     return {
