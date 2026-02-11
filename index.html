@@ -343,7 +343,8 @@ function loadListas(){
   return {
     supervisores: DEFAULT_SUPERVISORES.slice(),
     puestos: DEFAULT_PUESTOS.slice(),
-    colaboradores: DEFAULT_COLABORADORES.slice()
+    colaboradores: DEFAULT_COLABORADORES.slice(),
+    asignaciones: []
   };
 }
 
@@ -364,7 +365,8 @@ async function syncListasFromDrive(){
       const listas = {
         supervisores: result.supervisores || [],
         colaboradores: result.colaboradores || [],
-        puestos: result.puestos || []
+        puestos: result.puestos || [],
+        asignaciones: result.asignaciones || []
       };
       saveListas(listas);
       initListas();
@@ -373,6 +375,29 @@ async function syncListasFromDrive(){
   } catch(e){
     console.log('Error sincronizando listas:', e);
   }
+}
+
+// Obtener puesto de un colaborador
+function getPuestoColaborador(nombre){
+  const listas = loadListas();
+  const nombreUpper = (nombre || '').toUpperCase().trim();
+  const asig = listas.asignaciones?.find(a => a.colaborador === nombreUpper);
+  return asig ? asig.puesto : '';
+}
+
+// Obtener supervisor de un colaborador
+function getSupervisorColaborador(nombre){
+  const listas = loadListas();
+  const nombreUpper = (nombre || '').toUpperCase().trim();
+  const asig = listas.asignaciones?.find(a => a.colaborador === nombreUpper);
+  return asig ? asig.supervisor : '';
+}
+
+// Obtener equipo de un supervisor
+function getEquipoSupervisor(supervisor){
+  const listas = loadListas();
+  const supUpper = (supervisor || '').toUpperCase().trim();
+  return listas.asignaciones?.filter(a => a.supervisor.toUpperCase() === supUpper) || [];
 }
 
 // Agregar a lista en Google Sheets
@@ -838,10 +863,10 @@ function editDoc(id){
         document.getElementById('f-proxlugar').value = dd.proxReunion.lugar || '';
         document.getElementById('f-proxtemas').value = dd.proxReunion.temas || '';
       }
-      if(dd.asistentes?.length){formAsistentes = dd.asistentes; renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',ph:'Nombre completo'},{key:'cargo',label:'Cargo',ph:'Cargo/Área'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');}
+      if(dd.asistentes?.length){formAsistentes = dd.asistentes; renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');}
       if(dd.desarrollo?.length){formDesarrollo = dd.desarrollo; renderMiniTable('tbl-desarrollo',[{key:'tema',label:'Tema',ph:'Tema'},{key:'descripcion',label:'Resumen',ph:'Puntos clave...'},{key:'decision',label:'Decisión',ph:'Decisión'}],formDesarrollo,'formDesarrollo');}
       if(dd.acuerdos?.length){formAcuerdos = dd.acuerdos; renderMiniTable('tbl-acuerdos',[{key:'compromiso',label:'Compromiso',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'},{key:'fecha',label:'Fecha',type:'date'},{key:'prioridad',label:'Prior.',type:'select',opts:['Alta','Media','Baja']},{key:'estatus',label:'Estatus',type:'select',opts:['Pendiente','En proceso','Completado']}],formAcuerdos,'formAcuerdos');}
-      if(dd.firmas?.length){formFirmasM = dd.firmas; renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasM,'formFirmasM');}
+      if(dd.firmas?.length){formFirmasM = dd.firmas; renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasM,'formFirmasM');}
     } else if(d.type === 'aviso'){
       document.getElementById('f-afolio').value = d.folio || '';
       document.getElementById('f-atipo').value = dd.tipo || '';
@@ -855,7 +880,7 @@ function editDoc(id){
       document.getElementById('f-acontacto').value = dd.contacto || '';
       document.getElementById('f-tabla').value = dd.tabla || '';
       if(dd.acciones?.length){formAcciones = dd.acciones; renderMiniTable('tbl-acciones',[{key:'accion',label:'Acción',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre/Área'},{key:'fecha',label:'Fecha',type:'date'}],formAcciones,'formAcciones');}
-      if(dd.firmas?.length){formFirmasA = dd.firmas; renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasA,'formFirmasA');}
+      if(dd.firmas?.length){formFirmasA = dd.firmas; renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasA,'formFirmasA');}
     } else if(d.type === 'retroalimentacion'){
       document.getElementById('f-rfolio').value = d.folio || '';
       document.getElementById('f-rfecha').value = dd.fecha || '';
@@ -1696,20 +1721,20 @@ function renderFormContent(){
   // Render dynamic tables after DOM update
   setTimeout(()=>{
     if(newDocType==='minuta'){
-      renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',ph:'Nombre completo'},{key:'cargo',label:'Cargo',ph:'Cargo/Área'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');
+      renderMiniTable('tbl-asist',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'},{key:'asistencia',label:'Asist.',type:'select',opts:['Presente','Ausente','Justificado']}],formAsistentes,'formAsistentes');
       renderMiniTable('tbl-orden',[{key:'horario',label:'Horario',ph:'HH:MM'},{key:'tema',label:'Tema',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'}],formOrden,'formOrden');
       renderMiniTable('tbl-desarrollo',[{key:'tema',label:'Tema',ph:'Tema'},{key:'descripcion',label:'Resumen',ph:'Puntos clave...'},{key:'decision',label:'Decisión',ph:'Decisión'}],formDesarrollo,'formDesarrollo');
       renderMiniTable('tbl-acuerdos',[{key:'compromiso',label:'Compromiso',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre'},{key:'fecha',label:'Fecha',type:'date'},{key:'prioridad',label:'Prior.',type:'select',opts:['Alta','Media','Baja']},{key:'estatus',label:'Estatus',type:'select',opts:['Pendiente','En proceso','Completado']}],formAcuerdos,'formAcuerdos');
-      renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasM,'formFirmasM');
+      renderMiniTable('tbl-firmasM',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasM,'formFirmasM');
     } else if(newDocType==='aviso'){
       renderMiniTable('tbl-acciones',[{key:'accion',label:'Acción',ph:'Descripción'},{key:'responsable',label:'Resp.',ph:'Nombre/Área'},{key:'fecha',label:'Fecha',type:'date'}],formAcciones,'formAcciones');
-      renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasA,'formFirmasA');
+      renderMiniTable('tbl-firmasA',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasA,'formFirmasA');
     } else if(newDocType==='retroalimentacion'){
-      renderMiniTable('tbl-firmasR',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasR,'formFirmasR');
+      renderMiniTable('tbl-firmasR',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasR,'formFirmasR');
     } else if(newDocType==='plantrabajo'){
-      renderMiniTable('tbl-firmasP',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasP,'formFirmasP');
+      renderMiniTable('tbl-firmasP',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasP,'formFirmasP');
     } else if(newDocType==='baja'){
-      renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasB,'formFirmasB');
+      renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasB,'formFirmasB');
     }
   },0);
 }
@@ -1726,6 +1751,19 @@ function renderMiniTable(containerId, cols, data, ref){
         h+='<td><select onchange="updateFormRow(\''+ref+'\','+i+',\''+col.key+'\',this.value)">';
         col.opts.forEach(o=>h+=`<option${row[col.key]===o?' selected':''}>${o}</option>`);
         h+='</select></td>';
+      } else if(col.type==='colaborador'){
+        // Desplegable de colaboradores con auto-llenado de puesto
+        h+=`<td><select onchange="updateFormRowColaborador('${ref}',${i},'${col.key}',this.value,'${containerId}','${btoa(JSON.stringify(cols))}')">`;
+        h+='<option value="">Seleccionar...</option>';
+        COLABORADORES.forEach(c => h+=`<option${row[col.key]===c?' selected':''}>${c}</option>`);
+        h+='</select></td>';
+      } else if(col.type==='puesto'){
+        // Desplegable de puestos
+        h+=`<td><select onchange="updateFormRow('${ref}',${i},'${col.key}',this.value)">`;
+        h+='<option value="">Seleccionar...</option>';
+        const allPuestos = ['EJECUTIVO','SUPERVISOR','GERENTE','SUBDISTRIBUIDOR','FACTURACION','MESA DE CONTROL','BASE DE DATOS','COORDINADOR'];
+        allPuestos.forEach(p => h+=`<option${row[col.key]===p?' selected':''}>${p}</option>`);
+        h+='</select></td>';
       } else if(col.type==='date'){
         h+=`<td><input type="date" value="${row[col.key]||''}" onchange="updateFormRow('${ref}',${i},'${col.key}',this.value)"></td>`;
       } else if(col.type==='time'){
@@ -1737,7 +1775,98 @@ function renderMiniTable(containerId, cols, data, ref){
     h+=`<td style="width:28px;text-align:center"><button class="btn-rm" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" onclick="removeFormRow('${ref}',${i},'${containerId}','${btoa(JSON.stringify(cols))}')"${data.length<=1?' disabled style="opacity:.3"':''}>✕</button></td></tr>`;
   });
   h+=`</tbody></table><button class="btn-add-row" onclick="addFormRow('${ref}','${containerId}','${btoa(JSON.stringify(cols))}')">+ Agregar</button>`;
+  
+  // Botón para cargar equipo de supervisor (solo para asistentes y firmas de minuta)
+  if(ref === 'formAsistentes' || ref === 'formFirmasM'){
+    h+=`<button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="cargarEquipoSupervisor('${ref}','${containerId}','${btoa(JSON.stringify(cols))}')">👥 Cargar equipo</button>`;
+  }
+  
   c.innerHTML=h;
+}
+
+// Actualizar colaborador y auto-llenar puesto
+function updateFormRowColaborador(ref, i, key, value, containerId, colsB64){
+  const d = getFormRef(ref);
+  d[i][key] = value;
+  
+  // Auto-llenar puesto si existe la columna cargo
+  if(value){
+    const puesto = getPuestoColaborador(value);
+    if(puesto && d[i].hasOwnProperty('cargo')){
+      d[i]['cargo'] = puesto;
+    }
+  }
+  
+  // Re-renderizar tabla
+  const cols = JSON.parse(atob(colsB64));
+  renderMiniTable(containerId, cols, d, ref);
+}
+
+// Cargar equipo de un supervisor
+function cargarEquipoSupervisor(ref, containerId, colsB64){
+  const supSelect = document.createElement('div');
+  supSelect.innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)this.remove()">
+      <div class="modal" style="max-width:400px">
+        <div class="modal-header"><h2>👥 Cargar Equipo</h2></div>
+        <div class="modal-body">
+          <div class="fg">
+            <label>Selecciona el supervisor:</label>
+            <select id="select-supervisor-equipo" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px">
+              <option value="">Seleccionar supervisor...</option>
+              ${SUPERVISORES.map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').remove()">Cancelar</button>
+          <button class="btn btn-pri" onclick="ejecutarCargarEquipo('${ref}','${containerId}','${colsB64}')">Cargar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(supSelect.firstElementChild);
+}
+
+function ejecutarCargarEquipo(ref, containerId, colsB64){
+  const select = document.getElementById('select-supervisor-equipo');
+  const supervisor = select.value;
+  if(!supervisor){
+    toast('Selecciona un supervisor','err');
+    return;
+  }
+  
+  const equipo = getEquipoSupervisor(supervisor);
+  if(equipo.length === 0){
+    toast('No se encontró equipo para este supervisor','err');
+    return;
+  }
+  
+  const d = getFormRef(ref);
+  const cols = JSON.parse(atob(colsB64));
+  
+  // Limpiar filas vacías existentes
+  while(d.length > 0) d.pop();
+  
+  // Agregar supervisor primero
+  if(ref === 'formAsistentes'){
+    d.push({nombre: supervisor.toUpperCase(), cargo: getPuestoColaborador(supervisor) || 'SUPERVISOR', asistencia: 'Presente'});
+  } else {
+    d.push({nombre: supervisor.toUpperCase(), cargo: getPuestoColaborador(supervisor) || 'SUPERVISOR'});
+  }
+  
+  // Agregar cada miembro del equipo
+  equipo.forEach(member => {
+    if(ref === 'formAsistentes'){
+      d.push({nombre: member.colaborador, cargo: member.puesto, asistencia: 'Presente'});
+    } else {
+      d.push({nombre: member.colaborador, cargo: member.puesto});
+    }
+  });
+  
+  renderMiniTable(containerId, cols, d, ref);
+  document.querySelector('.modal-overlay').remove();
+  toast(`✅ ${equipo.length + 1} personas cargadas`,'ok');
 }
 
 function getFormRef(ref){
