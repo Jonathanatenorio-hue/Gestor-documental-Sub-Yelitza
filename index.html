@@ -1110,9 +1110,8 @@ function editDoc(id){
       document.getElementById('f-bpagado').checked = dd.pagado || false;
       document.getElementById('f-bfechapago').value = dd.fechaPago || '';
       document.getElementById('f-bmetodo').value = dd.metodoPago || '';
-      document.getElementById('f-tabla').value = dd.tabla || '';
+     document.getElementById('f-tabla').value = dd.tabla || '';
       if(dd.firmas?.length){formFirmasB = dd.firmas; renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasB,'formFirmasB');}
-    }
     } else if(d.type === 'compromiso'){
       document.getElementById('f-cfolio').value = d.folio || '';
       document.getElementById('f-cfecha').value = dd.fecha || '';
@@ -1127,6 +1126,7 @@ function editDoc(id){
       document.getElementById('f-cseguimiento').value = dd.seguimiento || '';
       document.getElementById('f-tabla').value = dd.tabla || '';
       if(dd.firmas?.length){formFirmasC = dd.firmas; renderMiniTable('tbl-firmasC',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasC,'formFirmasC');}
+    }
     // Load anexos if any
     if(dd.anexos?.length){
       anexosData = dd.anexos;
