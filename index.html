@@ -2721,7 +2721,8 @@ function generateDocPDF(d){
     if(dd.consecuencias){sec('Consecuencias de Incumplimiento');addText(dd.consecuencias);}
     if(dd.seguimiento){sec('Fecha de Seguimiento');addText(fmtDate(dd.seguimiento));}
     if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(textWidth)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
-  for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
+  }
+    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
   doc.save(`${d.folio||'documento'}_ExpertCell.pdf`);
 }
 
