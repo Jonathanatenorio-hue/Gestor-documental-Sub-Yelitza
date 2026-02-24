@@ -2707,7 +2707,6 @@ function generateDocPDF(d){
     }
     // Firmas baja
     if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(textWidth)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
-  }
 } else if(d.type==='compromiso'){
     doc.setFillColor(245,127,23);doc.roundedRect(m,y,textWidth,18,3,3,'F');
     doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('CARTA COMPROMISO',pageWidth/2,y+10,{align:'center'});
