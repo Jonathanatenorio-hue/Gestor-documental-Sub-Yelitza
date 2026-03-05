@@ -78,7 +78,6 @@ table.data-tbl tr:hover td{background:#F7FAFC}
 .badge-pln{background:#E3F2FD;color:#1565C0}
 .badge-acta{background:#FFEBEE;color:#C62828}
 .badge-baja{background:#F3E5F5;color:#7B1FA2}
-.badge-comp{background:#FFF8E1;color:#F57F17}  
 .badge-firmado{background:var(--oklt);color:var(--ok)}
 .badge-pendiente{background:var(--warnlt);color:var(--warn)}
 .badge-borrador{background:#F1F1F1;color:#888}
@@ -173,140 +172,6 @@ table.data-tbl tr:hover td{background:#F7FAFC}
 </style>
 </head>
 <body>
-  
-<!--
-═══════════════════════════════════════════════════════════════
-  LOGIN GATE — Pegar este bloque JUSTO DESPUÉS de <body>
-  en cada gestor documental.
-  
-  Para Gestor Puebla:  ALLOWED_CENTROS = [6, 7]
-  Para Gestor Yelitza: ALLOWED_CENTROS = [8]
-═══════════════════════════════════════════════════════════════
--->
-<div id="login-gate" style="position:fixed;inset:0;z-index:99999;background:#0a0f1a;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif">
-  <div style="background:#111827;border:1px solid #1e2d45;border-radius:20px;padding:40px;width:380px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-    <div style="width:56px;height:56px;background:linear-gradient(135deg,#009fdb,#0568ae);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;font-weight:900;color:#fff">EC</div>
-    <h2 style="color:#e8ecf4;font-size:22px;font-weight:800;margin-bottom:4px">Gestor Documental</h2>
-    <p style="color:#8b99b0;font-size:13px;margin-bottom:28px">Ingresa tus credenciales para continuar</p>
-    <div id="login-error" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;font-weight:600"></div>
-    <input id="login-attuid" type="text" placeholder="ATTUID" autocomplete="username" style="width:100%;padding:14px 16px;border-radius:10px;border:1px solid #1e2d45;background:#1a2236;color:#e8ecf4;font-size:15px;font-family:inherit;margin-bottom:12px;outline:none;transition:border .2s" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#1e2d45'">
-    <input id="login-pin" type="password" placeholder="PIN" autocomplete="current-password" style="width:100%;padding:14px 16px;border-radius:10px;border:1px solid #1e2d45;background:#1a2236;color:#e8ecf4;font-size:15px;font-family:inherit;margin-bottom:20px;outline:none;transition:border .2s" onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='#1e2d45'" onkeydown="if(event.key==='Enter')document.getElementById('login-btn').click()">
-    <button id="login-btn" onclick="doLogin()" style="width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,#0ea5e9,#0369a1);color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:opacity .2s" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Ingresar</button>
-    <p style="color:#475569;font-size:11px;margin-top:16px">Usa tus credenciales del CRM</p>
-  </div>
-</div>
-
-<script>
-// ═══ CONFIGURACIÓN ═══
-// CAMBIAR según la operación:
-// Puebla:     const ALLOWED_CENTROS = [6, 7];
-// Sub Yelitza: const ALLOWED_CENTROS = [8];
-const ALLOWED_CENTROS = [8]; // ← CAMBIAR PARA CADA GESTOR
-
-const SUPABASE_URL = 'https://smytiyjzmzbmcllivxkc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNteXRpeWp6bXpibWNsbGl2eGtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MTIwNzQsImV4cCI6MjA4NzM4ODA3NH0.KScWdne5ItM-iXtdKWuy75lXUUORJqmwRzp7z0W7OMo';
-const ADMIN_ATTUID = 'jt2908';
-const ALLOWED_ROLES = ['supervisor', 'coordinador', 'gerente', 'admin'];
-const SESSION_KEY = 'ec_gestor_session_yelitza';
-
-// ═══ CHECK SESIÓN EXISTENTE ═══
-(function checkSession() {
-  try {
-    var s = JSON.parse(sessionStorage.getItem(SESSION_KEY));
-    if (s && s.attuid && s.ts && (Date.now() - s.ts < 8 * 3600000)) {
-      // Sesión válida (8 horas)
-      document.getElementById('login-gate').style.display = 'none';
-    }
-  } catch(e) {}
-})();
-
-// ═══ LOGIN ═══
-async function doLogin() {
-  var btn = document.getElementById('login-btn');
-  var errDiv = document.getElementById('login-error');
-  var attuid = document.getElementById('login-attuid').value.trim().toUpperCase();
-  var pin = document.getElementById('login-pin').value.trim();
-  
-  errDiv.style.display = 'none';
-  
-  if (!attuid || !pin) {
-    errDiv.textContent = 'Ingresa ATTUID y PIN';
-    errDiv.style.display = 'block';
-    return;
-  }
-  
-  btn.textContent = 'Verificando...';
-  btn.disabled = true;
-  
-  try {
-    var res = await fetch(SUPABASE_URL + '/rest/v1/usuarios?attuid=eq.' + attuid + '&select=attuid,nombre,pin,rol,centro_id', {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
-    });
-    
-    if (!res.ok) throw new Error('Error de conexión');
-    
-    var data = await res.json();
-    
-    if (!data || data.length === 0) {
-      showError('ATTUID no encontrado');
-      return;
-    }
-    
-    var user = data[0];
-    
-    // Verificar PIN
-    if (String(user.pin) !== String(pin)) {
-      showError('PIN incorrecto');
-      return;
-    }
-    
-    // Verificar rol
-    if (!ALLOWED_ROLES.includes(user.rol)) {
-      showError('No tienes permisos para acceder');
-      return;
-    }
-    
-    // Admin tiene acceso a todo
-    if (user.rol === 'admin' || user.attuid === ADMIN_ATTUID) {
-      grantAccess(user);
-      return;
-    }
-    
-    // Verificar centro_id
-    if (!ALLOWED_CENTROS.includes(user.centro_id)) {
-      showError('No tienes acceso a esta operación');
-      return;
-    }
-    
-    grantAccess(user);
-    
-  } catch(e) {
-    showError('Error de conexión. Intenta de nuevo.');
-    console.error(e);
-  }
-  
-  function showError(msg) {
-    errDiv.textContent = msg;
-    errDiv.style.display = 'block';
-    btn.textContent = 'Ingresar';
-    btn.disabled = false;
-  }
-  
-  function grantAccess(user) {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
-      attuid: user.attuid,
-      nombre: user.nombre,
-      rol: user.rol,
-      ts: Date.now()
-    }));
-    document.getElementById('login-gate').style.display = 'none';
-  }
-}
-</script>
-<!-- ═══ FIN LOGIN GATE ═══ -->
 
 <!-- ═══ SIDEBAR ═══ -->
 <nav class="sidebar">
@@ -330,7 +195,6 @@ async function doLogin() {
     <button class="sb-item" onclick="showPage('planes')"><span class="icon">📊</span><span>Planes</span><span class="sb-badge" id="badge-pln">0</span></button>
     <button class="sb-item" onclick="showPage('actas')"><span class="icon">⚠️</span><span>Actas</span><span class="sb-badge" id="badge-act">0</span></button>
     <button class="sb-item" onclick="showPage('bajas')"><span class="icon">🚪</span><span>Bajas</span><span class="sb-badge" id="badge-baj">0</span></button>
-    <button class="sb-item" onclick="showPage('compromisos')"><span class="icon">🤝</span><span>Compromisos</span><span class="sb-badge" id="badge-com">0</span></button>
     <div class="sb-section">Sistema</div>
     <button class="sb-item" onclick="showPage('drive')"><span class="icon">☁️</span><span>Google Drive</span></button>
     <button class="sb-item" onclick="accessAdmin()"><span class="icon">🔐</span><span>Administración</span></button>
@@ -684,12 +548,12 @@ let currentPage = 'dashboard';
 function showPage(page){
   currentPage = page;
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',actas:'Actas Administrativas',bajas:'Bajas',compromisos:'Cartas Compromiso',drive:'Configuración Google Drive',admin:'Administración'};
+  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',actas:'Actas Administrativas',bajas:'Bajas',drive:'Configuración Google Drive',admin:'Administración'};
   document.getElementById('page-title').textContent = labels[page]||'';
-  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,actas:6,bajas:7,compromisos:8,drive:9,admin:10};
+  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,actas:6,bajas:7,drive:8,admin:9};
   if(navMap[page]!==undefined) document.querySelectorAll('.sb-item')[navMap[page]]?.classList.add('active');
   updateBadges();
-  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),compromisos:()=>renderHistorial('compromiso'),drive:renderDrive,admin:renderAdmin};
+  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),drive:renderDrive,admin:renderAdmin};
   (renderers[page]||renderDashboard)();
 }
 
@@ -701,7 +565,6 @@ function updateBadges(){
   document.getElementById('badge-pln').textContent=docs.filter(d=>d.type==='plantrabajo').length;
   document.getElementById('badge-act').textContent=docs.filter(d=>d.type==='actaadmin').length;
   document.getElementById('badge-baj').textContent=docs.filter(d=>d.type==='baja').length;
-  document.getElementById('badge-com').textContent=docs.filter(d=>d.type==='compromiso').length;
 }
 
 // ══════════════════════════════════════════════════════
@@ -731,8 +594,8 @@ function renderDashboard(){
     const recent = docs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,8);
     h+=`<table class="data-tbl"><thead><tr><th>Folio</th><th>Tipo</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
     recent.forEach(d=>{
-      const typeNames = {minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalim.',plantrabajo:'Plan Trabajo',actaadmin:'Acta Admin.',baja:'Baja',compromiso:'Compromiso'};
-      const typeClasses = {minuta:'badge-minuta',aviso:'badge-aviso',retroalimentacion:'badge-ret',plantrabajo:'badge-pln',actaadmin:'badge-acta',baja:'badge-baja',compromiso:'badge-comp'};
+      const typeNames = {minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalim.',plantrabajo:'Plan Trabajo',actaadmin:'Acta Admin.',baja:'Baja'};
+      const typeClasses = {minuta:'badge-minuta',aviso:'badge-aviso',retroalimentacion:'badge-ret',plantrabajo:'badge-pln',actaadmin:'badge-acta',baja:'badge-baja'};
       const typeClass = typeClasses[d.type]||'badge-aviso';
       const typeName = typeNames[d.type]||d.type;
       const statusClass = d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
@@ -766,7 +629,7 @@ function renderDashboard(){
 function renderHistorial(type){
   const docs=loadDocs().filter(d=>d.type===type).sort((a,b)=>b.createdAt-a.createdAt);
   const typeNames={minuta:'Minutas',aviso:'Avisos',retroalimentacion:'Retroalimentaciones',plantrabajo:'Planes de Trabajo',actaadmin:'Actas Administrativas',baja:'Bajas'};
-  const typeIcons={minuta:'📋',aviso:'📢',retroalimentacion:'💬',plantrabajo:'📊',actaadmin:'⚠️',baja:'🚪',compromiso:'🤝'};
+  const typeIcons={minuta:'📋',aviso:'📢',retroalimentacion:'💬',plantrabajo:'📊',actaadmin:'⚠️',baja:'🚪'};
   const typeName=typeNames[type]||type;
 
   let h=`<div class="table-wrap">
@@ -780,7 +643,7 @@ function renderHistorial(type){
       </select>`;
   
   // Filtros adicionales para retroalimentación
-  if(type === 'retroalimentacion' || type === 'compromiso'){
+  if(type === 'retroalimentacion'){
     h += `<select class="filter-sel" onchange="filterBySupervisor(this.value,'${type}')">
         <option value="">Todos los supervisores</option>
         ${SUPERVISORES.map(s => `<option value="${s}">${s}</option>`).join('')}
@@ -798,7 +661,7 @@ function renderHistorial(type){
     h+=`<div class="empty-state"><div class="icon">${typeIcons[type]||'📄'}</div><h3>No hay ${typeName.toLowerCase()}</h3><p>Crea uno nuevo para comenzar.</p></div>`;
   } else {
     // Encabezados especiales para retroalimentación
-    if(type === 'retroalimentacion' || type === 'compromiso'){
+    if(type === 'retroalimentacion'){
       h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Colaborador</th><th>Supervisor</th><th>Tipo</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody>`;
       docs.forEach(d=>{
         const dd = d.data || {};
@@ -1110,23 +973,10 @@ function editDoc(id){
       document.getElementById('f-bpagado').checked = dd.pagado || false;
       document.getElementById('f-bfechapago').value = dd.fechaPago || '';
       document.getElementById('f-bmetodo').value = dd.metodoPago || '';
-     document.getElementById('f-tabla').value = dd.tabla || '';
-      if(dd.firmas?.length){formFirmasB = dd.firmas; renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasB,'formFirmasB');}
-    } else if(d.type === 'compromiso'){
-      document.getElementById('f-cfolio').value = d.folio || '';
-      document.getElementById('f-cfecha').value = dd.fecha || '';
-      document.getElementById('f-ccolaborador').value = dd.colaborador || '';
-      document.getElementById('f-cpuesto').value = dd.puesto || '';
-      document.getElementById('f-carea').value = dd.area || '';
-      document.getElementById('f-csupervisor').value = dd.supervisor || '';
-      document.getElementById('f-ctipo').value = dd.tipo || '';
-      document.getElementById('f-cmotivo').value = dd.motivo || '';
-      document.getElementById('f-ccontenido').value = dd.contenido || '';
-      document.getElementById('f-cconsecuencias').value = dd.consecuencias || '';
-      document.getElementById('f-cseguimiento').value = dd.seguimiento || '';
       document.getElementById('f-tabla').value = dd.tabla || '';
-      if(dd.firmas?.length){formFirmasC = dd.firmas; renderMiniTable('tbl-firmasC',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasC,'formFirmasC');}
+      if(dd.firmas?.length){formFirmasB = dd.firmas; renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',ph:'Nombre'},{key:'cargo',label:'Cargo',ph:'Cargo'}],formFirmasB,'formFirmasB');}
     }
+    
     // Load anexos if any
     if(dd.anexos?.length){
       anexosData = dd.anexos;
@@ -1256,6 +1106,43 @@ function removeAnexo(i){
 // ══════════════════════════════════════════════════════
 // EVALUACIÓN DE LLAMADAS
 // ══════════════════════════════════════════════════════
+function toggleJuntaOptions(){
+  const tipo = document.getElementById('f-tipo')?.value;
+  const fgSubtipo = document.getElementById('fg-subtipo');
+  const fgNivel = document.getElementById('fg-nivel');
+  
+  if(tipo === 'Junta'){
+    if(fgSubtipo) fgSubtipo.style.display = 'block';
+    if(fgNivel) fgNivel.style.display = 'block';
+    toggleMetasSection();
+  } else {
+    if(fgSubtipo) fgSubtipo.style.display = 'none';
+    if(fgNivel) fgNivel.style.display = 'none';
+    const sectionMetas = document.getElementById('section-metas');
+    if(sectionMetas) sectionMetas.style.display = 'none';
+  }
+}
+
+function toggleMetasSection(){
+  const subtipo = document.getElementById('f-subtipo')?.value;
+  const sectionMetas = document.getElementById('section-metas');
+  
+  if(subtipo === 'Metas' || subtipo === 'General'){
+    if(sectionMetas){
+      sectionMetas.style.display = 'block';
+      renderMiniTable('tbl-metas',[
+        {key:'responsable',label:'Responsable',type:'colaborador'},
+        {key:'meta',label:'Meta/Objetivo',ph:'Descripción de la meta'},
+        {key:'indicador',label:'Indicador',ph:'Ej: 50 ventas, 90%'},
+        {key:'periodo',label:'Período',type:'select',opts:['Semanal','Quincenal','Mensual','Trimestral']},
+        {key:'fechaLimite',label:'Fecha Límite',type:'date'}
+      ],formMetas,'formMetas');
+    }
+  } else {
+    if(sectionMetas) sectionMetas.style.display = 'none';
+  }
+}
+
 function toggleEvalLlamada(){
   const tipo = document.getElementById('f-rtipo')?.value;
   const evalSection = document.getElementById('eval-llamada-section');
@@ -1504,26 +1391,26 @@ let formAsistentes=[{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:
 let formOrden=[{horario:'',tema:'',responsable:''},{horario:'',tema:'',responsable:''}];
 let formDesarrollo=[{tema:'',descripcion:'',decision:''}];
 let formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatus:'Pendiente'}];
+let formMetas=[{responsable:'',meta:'',indicador:'',periodo:'Mensual',fechaLimite:''}];
 let formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formAcciones=[{accion:'',responsable:'',fecha:''}];
 let formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formFirmasR=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formFirmasP=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formFirmasB=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
-let formFirmasC=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 
 function resetFormArrays(){
   formAsistentes=[{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'},{nombre:'',cargo:'',asistencia:'Presente'}];
   formOrden=[{horario:'',tema:'',responsable:''},{horario:'',tema:'',responsable:''}];
   formDesarrollo=[{tema:'',descripcion:'',decision:''}];
   formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatus:'Pendiente'}];
+  formMetas=[{responsable:'',meta:'',indicador:'',periodo:'Mensual',fechaLimite:''}];
   formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formAcciones=[{accion:'',responsable:'',fecha:''}];
   formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formFirmasR=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formFirmasP=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formFirmasB=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
-  formFirmasC=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 }
 
 function renderNuevo(){
@@ -1544,7 +1431,6 @@ function renderNuevo(){
     <button class="btn ${newDocType==='plantrabajo'?'btn-pri':'btn-ghost'}" onclick="newDocType='plantrabajo';renderNuevo()">📊 Plan de Trabajo</button>
     <button class="btn ${newDocType==='actaadmin'?'btn-pri':'btn-ghost'}" onclick="newDocType='actaadmin';renderNuevo()">⚠️ Acta Administrativa</button>
     <button class="btn ${newDocType==='baja'?'btn-pri':'btn-ghost'}" onclick="newDocType='baja';renderNuevo()">🚪 Baja</button>
-    <button class="btn ${newDocType==='compromiso'?'btn-pri':'btn-ghost'}" onclick="newDocType='compromiso';renderNuevo()">🤝 Carta Compromiso</button>
   </div>
   <div style="display:flex;gap:22px">
     <div style="flex:1;min-width:0" id="form-area"></div>
@@ -1560,7 +1446,9 @@ function renderFormContent(){
   if(newDocType==='minuta'){
     h+=`<div class="sec-title">📅 Información de la Reunión</div>
     <div class="grid2">
-      <div class="fg"><label>Tipo</label><select id="f-tipo"><option>Dinamicas</option><option>Operación</option><option>Administrativo</option><option>Comunicados generales</option><option>Pagos</option></select></div>
+      <div class="fg"><label>Tipo</label><select id="f-tipo" onchange="toggleJuntaOptions()"><option>Dinamicas</option><option>Operación</option><option>Administrativo</option><option>Comunicados generales</option><option>Pagos</option><option>Junta</option></select></div>
+      <div class="fg" id="fg-subtipo" style="display:none"><label>Subtipo de Junta</label><select id="f-subtipo" onchange="toggleMetasSection()"><option>Metas</option><option>Mesa de control</option><option>Talento humano</option><option>Sistemas</option><option>Análisis</option><option>Capacitación</option><option>Operación</option><option>General</option></select></div>
+      <div class="fg" id="fg-nivel" style="display:none"><label>Nivel de Junta</label><select id="f-nivel"><option>Gerencia</option><option>Coordinación</option><option>Supervisión</option></select></div>
       <div class="fg"><label>Folio</label><input id="f-folio" value="EC-MIN-${String(loadDocs().filter(d=>d.type==='minuta').length+1).padStart(3,'0')}"></div>
       <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-fecha"></div>
       <div class="fg"><label>Ubicación</label><select id="f-ubicacion"><option>Celula Neza</option><option>Celula Atlixco</option><option>Sub Yelitza Orsuna</option></select></div>
@@ -1573,6 +1461,12 @@ function renderFormContent(){
     <div class="fg"><label>Descripción</label>${createRichEditor('f-descripcion', 'Redacta el tema de la minuta...', 150)}</div>`;
 
     h+=`<div class="sec-title">👥 Lista de Asistencia</div><div id="tbl-asist"></div>`;
+    
+    h+=`<div id="section-metas" style="display:none">
+      <div class="sec-title">🎯 Metas y Objetivos</div>
+      <div id="tbl-metas"></div>
+    </div>`;
+    
     h+=`<div class="sec-title">💬 Desarrollo</div><div id="tbl-desarrollo"></div>`;
     h+=`<div class="sec-title">✅ Acuerdos y Compromisos</div><div id="tbl-acuerdos"></div>`;
 
@@ -1863,33 +1757,6 @@ function renderFormContent(){
     <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
     h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasB"></div>`;
   }
-  else if(newDocType==='compromiso'){
-    h+=`<div class="sec-title">🤝 Carta Compromiso</div>
-    <div class="grid2">
-      <div class="fg"><label>Folio</label><input id="f-cfolio" value="EC-COM-${String(loadDocs().filter(d=>d.type==='compromiso').length+1).padStart(3,'0')}"></div>
-      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-cfecha"></div>
-      <div class="fg"><label>Colaborador <span class="req">*</span></label><select id="f-ccolaborador">${optionsList(COLABORADORES)}</select></div>
-      <div class="fg"><label>Puesto</label><select id="f-cpuesto">${optionsList(PUESTOS)}</select></div>
-      <div class="fg"><label>Área</label><select id="f-carea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
-      <div class="fg"><label>Supervisor</label><select id="f-csupervisor">${optionsList(SUPERVISORES)}</select></div>
-    </div>
-    <div class="fg"><label>Compromiso</label><select id="f-ctipo"><option>Metas</option><option>Comportamiento</option><option>Faltas (Ausentismo)</option><option>Retardos</option></select></div>
-    <div class="fg"><label>Motivo / Situación</label><textarea id="f-cmotivo" rows="3" placeholder="Describe la situación que genera el compromiso..."></textarea></div>
-    <div class="fg"><label>Detalle del Compromiso</label><textarea id="f-ccontenido" rows="4" placeholder="Detalle del compromiso que asume el colaborador..."></textarea></div>
-    <div class="fg"><label>Consecuencias de incumplimiento</label><textarea id="f-cconsecuencias" rows="3" placeholder="Qué sucede si no se cumple el compromiso..."></textarea></div>
-    <div class="fg"><label>Fecha de Seguimiento</label><input id="f-cseguimiento" type="date"></div>`;
-    h+=`<div class="sec-title">📎 Anexos</div>
-    <div class="fg">
-      <div class="upload-zone" onclick="document.getElementById('anexos-input').click()" style="margin-bottom:10px">
-        <div class="upload-icon">🖼️</div>
-        <div class="upload-text"><b>Clic para agregar imágenes</b></div>
-      </div>
-      <input type="file" id="anexos-input" accept="image/*" multiple style="display:none" onchange="handleAnexos(this)">
-      <div id="anexos-preview"></div>
-    </div>
-    <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
-    h+=`<div class="sec-title">✍️ Firmas</div><div id="tbl-firmasC"></div>`;
-  }
 
   h+=`<div style="padding:20px 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
     <button class="btn btn-pri" onclick="saveAndDownload('pdf')" style="padding:14px 32px;font-size:15px">📕 Guardar y Descargar PDF</button>
@@ -1915,9 +1782,6 @@ function renderFormContent(){
       renderMiniTable('tbl-firmasP',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasP,'formFirmasP');
     } else if(newDocType==='baja'){
       renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasB,'formFirmasB');
-    }
-    else if(newDocType==='compromiso'){
-      renderMiniTable('tbl-firmasC',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasC,'formFirmasC');
     }
   },0);
 }
@@ -2053,7 +1917,7 @@ function ejecutarCargarEquipo(ref, containerId, colsB64){
 }
 
 function getFormRef(ref){
-  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formFirmasM,formAcciones,formFirmasA,formFirmasR,formFirmasP,formFirmasB,formFirmasC};
+  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formMetas,formFirmasM,formAcciones,formFirmasA,formFirmasR,formFirmasP,formFirmasB};
   return m[ref];
 }
 function updateFormRow(ref,i,k,v){getFormRef(ref)[i][k]=v;}
@@ -2140,13 +2004,19 @@ function collectDocData(){
   const tabla = V('f-tabla');
   
   if(newDocType==='minuta'){
+    const tipoMinuta = V('f-tipo');
+    const subtipo = tipoMinuta === 'Junta' ? V('f-subtipo') : '';
+    const nivel = tipoMinuta === 'Junta' ? V('f-nivel') : '';
+    const titleSuffix = tipoMinuta === 'Junta' ? `Junta ${subtipo}` : tipoMinuta;
+    
     return {
-      type:'minuta', folio:V('f-folio'), title:`Minuta ${V('f-tipo')} – ${fmtDate(V('f-fecha'))}`,
+      type:'minuta', folio:V('f-folio'), title:`Minuta ${titleSuffix} – ${fmtDate(V('f-fecha'))}`,
       displayDate:fmtDate(V('f-fecha')), status:'pendiente',
-      data:{tipo:V('f-tipo'),fecha:V('f-fecha'),hinicio:V('f-hinicio'),hfin:V('f-hfin'),
+      data:{tipo:V('f-tipo'),subtipo:subtipo,nivel:nivel,fecha:V('f-fecha'),hinicio:V('f-hinicio'),hfin:V('f-hfin'),
         ubicacion:V('f-ubicacion'),convoca:V('f-convoca'),elabora:V('f-elabora'),objetivo:V('f-objetivo'),
         descripcion:V('f-descripcion'),
         asistentes:formAsistentes.filter(a=>a.nombre),orden:formOrden.filter(o=>o.tema),
+        metas:formMetas.filter(m=>m.responsable || m.meta),
         desarrollo:formDesarrollo.filter(d=>d.tema),acuerdos:formAcuerdos.filter(a=>a.compromiso),
         proxReunion:{fecha:V('f-proxfecha'),hora:V('f-proxhora'),lugar:V('f-proxlugar'),temas:V('f-proxtemas')},
         observaciones:V('f-obs'),firmas:formFirmasM.filter(f=>f.nombre),
@@ -2238,17 +2108,6 @@ function collectDocData(){
         anexos:anexos,tabla:tabla}
     };
   }
-  else if(newDocType==='compromiso'){
-    return {
-      type:'compromiso', folio:V('f-cfolio'), title:`Carta Compromiso – ${V('f-ccolaborador')}`,
-      displayDate:fmtDate(V('f-cfecha')), status:'pendiente',
-      data:{fecha:V('f-cfecha'),colaborador:V('f-ccolaborador'),puesto:V('f-cpuesto'),
-        area:V('f-carea'),supervisor:V('f-csupervisor'),tipo:V('f-ctipo'),
-        motivo:V('f-cmotivo'),contenido:V('f-ccontenido'),consecuencias:V('f-cconsecuencias'),seguimiento:V('f-cseguimiento'),
-        firmas:formFirmasC.filter(f=>f.nombre),
-        anexos:anexosData.slice(),tabla:V('f-tabla')}
-    };
-  }
 }
 
 function saveAndDownload(mode){
@@ -2306,7 +2165,7 @@ function generateDocPDF(d){
   doc.setDrawColor(27,117,187);doc.setLineWidth(0.7);doc.line(0,26,pageWidth,26);y=32;
 
   const dd=d.data||{};
-  const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal',compromiso:'Carta Compromiso'};
+  const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
   const maxY = pageHeight - 40; // Espacio amplio para el footer
   
   const addFooter=(pn)=>{
@@ -2413,8 +2272,11 @@ function generateDocPDF(d){
   };
 
   if(d.type==='minuta'){
+    const tipoDisplay = dd.tipo === 'Junta' && dd.subtipo ? `Junta ${dd.subtipo}` : (dd.tipo || '');
+    const nivelDisplay = dd.nivel ? ` | Nivel: ${dd.nivel}` : '';
+    
     doc.setFontSize(18);doc.setTextColor(13,79,128);doc.setFont('helvetica','bold');doc.text('MINUTA DE REUNIÓN',pageWidth/2,y+6,{align:'center'});
-    doc.setFontSize(10);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`${dd.tipo||''}     Folio: ${d.folio||''}`,pageWidth/2,y+13,{align:'center'});
+    doc.setFontSize(10);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');doc.text(`${tipoDisplay}${nivelDisplay}     Folio: ${d.folio||''}`,pageWidth/2,y+13,{align:'center'});
     doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);doc.line(m,y+16,pageWidth-m,y+16);y+=24;
 
     sec('Información de la Reunión');
@@ -2428,6 +2290,14 @@ function generateDocPDF(d){
     if(dd.objetivo){sec('Objetivo');addText(dd.objetivo);}
     if(dd.descripcion){sec('Descripción');addText(dd.descripcion);}
     if(dd.asistentes?.length){sec('Lista de Asistencia');doc.autoTable({startY:y,...tblOpts,head:[['#','Nombre','Cargo','Asistencia','Firma']],body:dd.asistentes.map((a,i)=>[i+1,a.nombre,a.cargo,a.asistencia,''])});y=doc.lastAutoTable.finalY+6;}
+    
+    // Sección de Metas (solo para Juntas de Metas o General)
+    if(dd.metas?.length){
+      sec('Metas y Objetivos');
+      doc.autoTable({startY:y,...tblOpts,head:[['#','Responsable','Meta/Objetivo','Indicador','Período','Fecha Límite']],body:dd.metas.map((m,i)=>[i+1,m.responsable,m.meta,m.indicador,m.periodo,fmtDate(m.fechaLimite)]),columnStyles:{0:{cellWidth:8},1:{cellWidth:40},2:{cellWidth:50},3:{cellWidth:30},4:{cellWidth:22},5:{cellWidth:22}}});
+      y=doc.lastAutoTable.finalY+6;
+    }
+    
     if(dd.desarrollo?.length){
       sec('Desarrollo');
       doc.autoTable({startY:y,...tblOpts,head:[['#','Tema','Descripción','Decisión']],body:dd.desarrollo.map((x,i)=>[i+1,x.tema,x.descripcion,x.decision]),columnStyles:{1:{cellWidth:35},2:{cellWidth:60},3:{cellWidth:50}}});
@@ -2707,22 +2577,9 @@ function generateDocPDF(d){
     }
     // Firmas baja
     if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(textWidth)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
-} else if(d.type==='compromiso'){
-    doc.setFillColor(245,127,23);doc.roundedRect(m,y,textWidth,18,3,3,'F');
-    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('CARTA COMPROMISO',pageWidth/2,y+10,{align:'center'});
-    doc.setFontSize(9);doc.setTextColor(255,249,196);doc.text(`${dd.tipo||''}`,pageWidth/2,y+15.5,{align:'center'});y+=24;
-
-    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:40,fillColor:[255,248,225],fontStyle:'bold',textColor:[230,81,0]}},body:[
-      ['Folio:',d.folio||''],['Fecha:',fmtDate(dd.fecha)],['Colaborador:',dd.colaborador||''],['Puesto:',dd.puesto||''],['Área:',dd.area||''],['Supervisor:',dd.supervisor||''],['Compromiso:',dd.tipo||'']
-    ]});y=doc.lastAutoTable.finalY+6;
-
-    if(dd.motivo){sec('Motivo / Situación');addText(dd.motivo);}
-    if(dd.contenido){sec('Detalle del Compromiso');addText(dd.contenido);}
-    if(dd.consecuencias){sec('Consecuencias de Incumplimiento');addText(dd.consecuencias);}
-    if(dd.seguimiento){sec('Fecha de Seguimiento');addText(fmtDate(dd.seguimiento));}
-    if(dd.firmas?.length){checkPage();sec('Firmas');y+=12;const sp=(textWidth)/dd.firmas.length;dd.firmas.forEach((f,i)=>{const cx=m+sp*i+sp/2;doc.setDrawColor(74,74,74);doc.setLineWidth(.4);doc.line(cx-25,y,cx+25,y);doc.setFontSize(9);doc.setTextColor(74,74,74);doc.setFont('helvetica','bold');doc.text(f.nombre||'',cx,y+5,{align:'center'});doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(113,128,150);doc.text(f.cargo||'',cx,y+9,{align:'center'});});}
   }
-    for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
+
+  for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);addFooter(p);}
   doc.save(`${d.folio||'documento'}_ExpertCell.pdf`);
 }
 
