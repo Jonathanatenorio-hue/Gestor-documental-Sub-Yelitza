@@ -76,6 +76,7 @@ table.data-tbl tr:hover td{background:#F7FAFC}
 .badge-aviso{background:var(--warnlt);color:var(--warn)}
 .badge-ret{background:#E8F5E9;color:#2E7D32}
 .badge-pln{background:#E3F2FD;color:#1565C0}
+.badge-cc{background:#FFF3E0;color:#E65100}
 .badge-acta{background:#FFEBEE;color:#C62828}
 .badge-baja{background:#F3E5F5;color:#7B1FA2}
 .badge-firmado{background:var(--oklt);color:var(--ok)}
@@ -193,6 +194,7 @@ table.data-tbl tr:hover td{background:#F7FAFC}
     <button class="sb-item" onclick="showPage('avisos')"><span class="icon">📢</span><span>Avisos</span><span class="sb-badge" id="badge-avi">0</span></button>
     <button class="sb-item" onclick="showPage('retroalimentaciones')"><span class="icon">💬</span><span>Retroalim.</span><span class="sb-badge" id="badge-ret">0</span></button>
     <button class="sb-item" onclick="showPage('planes')"><span class="icon">📊</span><span>Planes</span><span class="sb-badge" id="badge-pln">0</span></button>
+    <button class="sb-item" onclick="showPage('cartas')"><span class="icon">📝</span><span>Cartas Comp.</span><span class="sb-badge" id="badge-cc">0</span></button>
     <button class="sb-item" onclick="showPage('actas')"><span class="icon">⚠️</span><span>Actas</span><span class="sb-badge" id="badge-act">0</span></button>
     <button class="sb-item" onclick="showPage('bajas')"><span class="icon">🚪</span><span>Bajas</span><span class="sb-badge" id="badge-baj">0</span></button>
     <div class="sb-section">Sistema</div>
@@ -548,12 +550,12 @@ let currentPage = 'dashboard';
 function showPage(page){
   currentPage = page;
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
-  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',actas:'Actas Administrativas',bajas:'Bajas',drive:'Configuración Google Drive',admin:'Administración'};
+  const labels = {dashboard:'Dashboard',nuevo:'Nuevo Documento',minutas:'Minutas',avisos:'Avisos',retroalimentaciones:'Retroalimentaciones',planes:'Planes de Trabajo',cartas:'Cartas Compromiso',actas:'Actas Administrativas',bajas:'Bajas',drive:'Configuración Google Drive',admin:'Administración'};
   document.getElementById('page-title').textContent = labels[page]||'';
-  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,actas:6,bajas:7,drive:8,admin:9};
+  const navMap = {dashboard:0,nuevo:1,minutas:2,avisos:3,retroalimentaciones:4,planes:5,cartas:6,actas:7,bajas:8,drive:9,admin:10};
   if(navMap[page]!==undefined) document.querySelectorAll('.sb-item')[navMap[page]]?.classList.add('active');
   updateBadges();
-  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),drive:renderDrive,admin:renderAdmin};
+  const renderers = {dashboard:renderDashboard,nuevo:renderNuevo,minutas:()=>renderHistorial('minuta'),avisos:()=>renderHistorial('aviso'),retroalimentaciones:()=>renderHistorial('retroalimentacion'),planes:()=>renderHistorial('plantrabajo'),cartas:()=>renderHistorial('cartacompromiso'),actas:()=>renderHistorial('actaadmin'),bajas:()=>renderHistorial('baja'),drive:renderDrive,admin:renderAdmin};
   (renderers[page]||renderDashboard)();
 }
 
@@ -563,6 +565,7 @@ function updateBadges(){
   document.getElementById('badge-avi').textContent=docs.filter(d=>d.type==='aviso').length;
   document.getElementById('badge-ret').textContent=docs.filter(d=>d.type==='retroalimentacion').length;
   document.getElementById('badge-pln').textContent=docs.filter(d=>d.type==='plantrabajo').length;
+  document.getElementById('badge-cc').textContent=docs.filter(d=>d.type==='cartacompromiso').length;
   document.getElementById('badge-act').textContent=docs.filter(d=>d.type==='actaadmin').length;
   document.getElementById('badge-baj').textContent=docs.filter(d=>d.type==='baja').length;
 }
@@ -584,23 +587,31 @@ function renderDashboard(){
     <div class="stat-card orange"><div class="stat-num">${pendientes.length}</div><div class="stat-label">Pendientes de firma</div></div>
   </div>`;
 
-  // Recent docs
+  // Recent docs with search
   h+='<div class="table-wrap">';
-  h+='<div class="table-toolbar"><span style="font-weight:700;font-size:14px;color:var(--dk)">📄 Documentos Recientes</span><div style="margin-left:auto"><button class="btn btn-pri btn-sm" onclick="showPage(\'nuevo\')">➕ Nuevo</button></div></div>';
+  h+=`<div class="table-toolbar">
+    <span style="font-weight:700;font-size:14px;color:var(--dk)">📄 Documentos Recientes</span>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+      <input type="text" id="dashboard-search" placeholder="🔍 Buscar por nombre, folio, título..." style="padding:8px 12px;border:1px solid #ddd;border-radius:6px;width:250px" oninput="filterDashboard(this.value)">
+      <button class="btn btn-pri btn-sm" onclick="showPage('nuevo')">➕ Nuevo</button>
+    </div>
+  </div>`;
 
   if(docs.length===0){
     h+=`<div class="empty-state"><div class="icon">📂</div><h3>Sin documentos aún</h3><p>Crea tu primera minuta o aviso para comenzar.</p><button class="btn btn-pri" onclick="showPage('nuevo')">➕ Crear documento</button></div>`;
   } else {
-    const recent = docs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,8);
-    h+=`<table class="data-tbl"><thead><tr><th>Folio</th><th>Tipo</th><th>Título</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
+    const recent = docs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,20);
+    h+=`<table class="data-tbl" id="dashboard-tbl"><thead><tr><th>Folio</th><th>Tipo</th><th>Título / Persona</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
     recent.forEach(d=>{
-      const typeNames = {minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalim.',plantrabajo:'Plan Trabajo',actaadmin:'Acta Admin.',baja:'Baja'};
-      const typeClasses = {minuta:'badge-minuta',aviso:'badge-aviso',retroalimentacion:'badge-ret',plantrabajo:'badge-pln',actaadmin:'badge-acta',baja:'badge-baja'};
+      const dd = d.data || {};
+      const typeNames = {minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalim.',plantrabajo:'Plan Trabajo',cartacompromiso:'Carta Comp.',actaadmin:'Acta Admin.',baja:'Baja'};
+      const typeClasses = {minuta:'badge-minuta',aviso:'badge-aviso',retroalimentacion:'badge-ret',plantrabajo:'badge-pln',cartacompromiso:'badge-cc',actaadmin:'badge-acta',baja:'badge-baja'};
       const typeClass = typeClasses[d.type]||'badge-aviso';
       const typeName = typeNames[d.type]||d.type;
       const statusClass = d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
       const evid = (d.evidence||d.evidenceUrl)?`<span class="evidence-indicator evidence-yes">✅ Sí</span>`:`<span class="evidence-indicator evidence-no">— No</span>`;
-      h+=`<tr>
+      const searchData = [d.folio, d.title, dd.colaborador, dd.convoca, dd.emitido, dd.supervisor, dd.asunto].filter(Boolean).join(' ').toLowerCase();
+      h+=`<tr data-search="${searchData}">
         <td><strong>${d.folio||'—'}</strong></td>
         <td><span class="badge ${typeClass}">${typeName}</span></td>
         <td>${d.title||'Sin título'}</td>
@@ -623,18 +634,26 @@ function renderDashboard(){
   document.getElementById('page-content').innerHTML=h;
 }
 
+function filterDashboard(q){
+  const rows = document.querySelectorAll('#dashboard-tbl tbody tr');
+  q = q.toLowerCase();
+  rows.forEach(r => {
+    r.style.display = (!q || r.dataset.search.includes(q)) ? '' : 'none';
+  });
+}
+
 // ══════════════════════════════════════════════════════
 // HISTORIAL (filtered list)
 // ══════════════════════════════════════════════════════
 function renderHistorial(type){
   const docs=loadDocs().filter(d=>d.type===type).sort((a,b)=>b.createdAt-a.createdAt);
-  const typeNames={minuta:'Minutas',aviso:'Avisos',retroalimentacion:'Retroalimentaciones',plantrabajo:'Planes de Trabajo',actaadmin:'Actas Administrativas',baja:'Bajas'};
-  const typeIcons={minuta:'📋',aviso:'📢',retroalimentacion:'💬',plantrabajo:'📊',actaadmin:'⚠️',baja:'🚪'};
+  const typeNames={minuta:'Minutas',aviso:'Avisos',retroalimentacion:'Retroalimentaciones',plantrabajo:'Planes de Trabajo',cartacompromiso:'Cartas Compromiso',actaadmin:'Actas Administrativas',baja:'Bajas'};
+  const typeIcons={minuta:'📋',aviso:'📢',retroalimentacion:'💬',plantrabajo:'📊',cartacompromiso:'📝',actaadmin:'⚠️',baja:'🚪'};
   const typeName=typeNames[type]||type;
 
   let h=`<div class="table-wrap">
     <div class="table-toolbar">
-      <input class="search-box" placeholder="🔍 Buscar por folio, título..." oninput="filterTable(this.value,'${type}')">
+      <input class="search-box" placeholder="🔍 Buscar por folio, título, persona..." oninput="filterTable(this.value,'${type}')">
       <select class="filter-sel" onchange="filterByStatus(this.value,'${type}')">
         <option value="">Todos los estatus</option><option value="firmado">Firmados</option><option value="pendiente">Pendientes</option>
       </select>
@@ -642,8 +661,8 @@ function renderHistorial(type){
         <option value="">Con/Sin evidencia</option><option value="si">Con evidencia</option><option value="no">Sin evidencia</option>
       </select>`;
   
-  // Filtros adicionales para retroalimentación
-  if(type === 'retroalimentacion'){
+  // Filtros adicionales para retroalimentación y carta compromiso
+  if(type === 'retroalimentacion' || type === 'cartacompromiso'){
     h += `<select class="filter-sel" onchange="filterBySupervisor(this.value,'${type}')">
         <option value="">Todos los supervisores</option>
         ${SUPERVISORES.map(s => `<option value="${s}">${s}</option>`).join('')}
@@ -660,9 +679,9 @@ function renderHistorial(type){
   if(docs.length===0){
     h+=`<div class="empty-state"><div class="icon">${typeIcons[type]||'📄'}</div><h3>No hay ${typeName.toLowerCase()}</h3><p>Crea uno nuevo para comenzar.</p></div>`;
   } else {
-    // Encabezados especiales para retroalimentación
-    if(type === 'retroalimentacion'){
-      h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Colaborador</th><th>Supervisor</th><th>Tipo</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody>`;
+    // Encabezados especiales para retroalimentación y carta compromiso
+    if(type === 'retroalimentacion' || type === 'cartacompromiso'){
+      h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Colaborador</th><th>Jefe Directo</th><th>Tipo</th><th>Fecha</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody>`;
       docs.forEach(d=>{
         const dd = d.data || {};
         const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
@@ -674,9 +693,44 @@ function renderHistorial(type){
           <td>${d.displayDate||'—'}</td>
           <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':'Pendiente'}</span></td>
           <td>
+            <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')" title="Editar">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="duplicateDoc('${d.id}')" title="Duplicar">📋</button>
+            <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')" title="Ver">👁️</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')" title="PDF">📕</button>
+            <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')" title="Evidencia">📎</button>
+            <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')" title="Eliminar">🗑️</button>
+          </td>
+        </tr>`;
+      });
+    } else if(type === 'minuta'){
+      // Minutas con columna de participantes
+      h+=`<table class="data-tbl" id="tbl-${type}"><thead><tr><th>Folio</th><th>Título</th><th>Participantes</th><th>Fecha</th><th>Estatus</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>`;
+      docs.forEach(d=>{
+        const dd = d.data || {};
+        const sc=d.status==='firmado'?'badge-firmado':d.status==='pendiente'?'badge-pendiente':'badge-borrador';
+        const ev=(d.evidence||d.evidenceUrl)?'<span class="evidence-indicator evidence-yes">✅ Sí</span>':'<span class="evidence-indicator evidence-no">— No</span>';
+        // Determinar participantes
+        let participantes = '';
+        if(dd.asistentes?.length){
+          if(dd.asistentes.length === 1){
+            participantes = dd.asistentes[0].nombre || '—';
+          } else if(dd.asistentes.length <= 3){
+            participantes = dd.asistentes.map(a=>a.nombre).filter(Boolean).join(', ');
+          } else {
+            participantes = `Equipo (${dd.asistentes.length} personas)`;
+          }
+        } else {
+          participantes = dd.convoca || '—';
+        }
+        h+=`<tr data-folio="${(d.folio||'').toLowerCase()}" data-title="${(d.title||'').toLowerCase()}" data-status="${d.status}" data-evidence="${(d.evidence||d.evidenceUrl)?'si':'no'}" data-colaborador="${participantes.toLowerCase()}">
+          <td><strong>${d.folio||'—'}</strong></td><td>${d.title||'—'}</td><td>${participantes}</td><td>${d.displayDate||'—'}</td>
+          <td><span class="badge ${sc}">${d.status==='firmado'?'Firmado':d.status==='pendiente'?'Pendiente':'Borrador'}</span></td>
+          <td>${ev}</td>
+          <td>
             <button class="btn btn-ghost btn-sm" onclick="editDoc('${d.id}')">✏️</button>
             <button class="btn btn-ghost btn-sm" onclick="viewDoc('${d.id}')">👁️</button>
             <button class="btn btn-ghost btn-sm" onclick="downloadDocPDF('${d.id}')">📕</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadDocWord('${d.id}')">📄</button>
             <button class="btn btn-ghost btn-sm" onclick="uploadEvidence('${d.id}')">📎</button>
             <button class="btn-danger-ghost" onclick="deleteDoc('${d.id}')">🗑️</button>
           </td>
@@ -826,6 +880,39 @@ function deleteDoc(id){
   showPage(currentPage);
 }
 
+function duplicateDoc(id){
+  const docs = loadDocs();
+  const original = docs.find(x => x.id === id);
+  if(!original) return;
+  
+  // Crear copia con nuevo ID y folio
+  const newDoc = JSON.parse(JSON.stringify(original));
+  newDoc.id = 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
+  newDoc.createdAt = Date.now();
+  newDoc.status = 'pendiente';
+  
+  // Generar nuevo folio
+  const typePrefix = {minuta:'MIN',aviso:'AVI',retroalimentacion:'RET',plantrabajo:'PLN',cartacompromiso:'CC',actaadmin:'ACT',baja:'BAJ'};
+  const prefix = typePrefix[newDoc.type] || 'DOC';
+  const count = docs.filter(d => d.type === newDoc.type).length + 1;
+  newDoc.folio = `EC-${prefix}-${String(count).padStart(3,'0')}`;
+  
+  // Limpiar colaborador para que el usuario lo cambie
+  if(newDoc.data){
+    newDoc.data.colaborador = '';
+    newDoc.title = newDoc.title.replace(/–.*$/, '– (Duplicado)');
+  }
+  
+  // Guardar
+  docs.push(newDoc);
+  saveDocs(docs);
+  
+  toast('📋 Documento duplicado. Edita para cambiar el colaborador.','info');
+  
+  // Abrir para editar
+  editDoc(newDoc.id);
+}
+
 // ══════════════════════════════════════════════════════
 // EDIT DOCUMENT
 // ══════════════════════════════════════════════════════
@@ -948,6 +1035,22 @@ function editDoc(id){
       document.getElementById('f-aafirma3').value = dd.firmaEmite || '';
       document.getElementById('f-aafirma4').value = dd.firmaTestigo || '';
       document.getElementById('f-tabla').value = dd.tabla || '';
+    } else if(d.type === 'cartacompromiso'){
+      document.getElementById('f-ccfolio').value = d.folio || '';
+      document.getElementById('f-ccfecha').value = dd.fecha || '';
+      document.getElementById('f-cccolaborador').value = dd.colaborador || '';
+      document.getElementById('f-ccpuesto').value = dd.puesto || '';
+      document.getElementById('f-ccarea').value = dd.area || '';
+      document.getElementById('f-ccsupervisor').value = dd.supervisor || '';
+      document.getElementById('f-cctipo').value = dd.tipo || '';
+      document.getElementById('f-ccsituacion').value = dd.situacion || '';
+      document.getElementById('f-ccantecedentes').value = dd.antecedentes || '';
+      document.getElementById('f-ccconsecuencias').value = dd.consecuencias || '';
+      document.getElementById('f-ccrevision').value = dd.fechaRevision || '';
+      document.getElementById('f-ccresponsable').value = dd.responsableSeguimiento || '';
+      document.getElementById('f-ccobs').value = dd.observaciones || '';
+      if(dd.compromisos?.length){formCompromisos = dd.compromisos; renderMiniTable('tbl-compromisos',[{key:'compromiso',label:'Compromiso',ph:'Descripción del compromiso'},{key:'fechaLimite',label:'Fecha Límite',type:'date'},{key:'indicador',label:'Indicador de Cumplimiento',ph:'Cómo se medirá'}],formCompromisos,'formCompromisos');}
+      if(dd.firmas?.length){formFirmasCC = dd.firmas; renderMiniTable('tbl-firmasCC',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasCC,'formFirmasCC');}
     } else if(d.type === 'baja'){
       document.getElementById('f-bfolio').value = d.folio || '';
       document.getElementById('f-bfecha').value = dd.fecha || '';
@@ -1392,11 +1495,13 @@ let formOrden=[{horario:'',tema:'',responsable:''},{horario:'',tema:'',responsab
 let formDesarrollo=[{tema:'',descripcion:'',decision:''}];
 let formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatus:'Pendiente'}];
 let formMetas=[{responsable:'',meta:'',indicador:'',periodo:'Mensual',fechaLimite:''}];
+let formCompromisos=[{compromiso:'',fechaLimite:'',indicador:''}];
 let formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formAcciones=[{accion:'',responsable:'',fecha:''}];
 let formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formFirmasR=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formFirmasP=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+let formFirmasCC=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 let formFirmasB=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 
 function resetFormArrays(){
@@ -1405,11 +1510,13 @@ function resetFormArrays(){
   formDesarrollo=[{tema:'',descripcion:'',decision:''}];
   formAcuerdos=[{compromiso:'',responsable:'',fecha:'',prioridad:'Alta',estatus:'Pendiente'}];
   formMetas=[{responsable:'',meta:'',indicador:'',periodo:'Mensual',fechaLimite:''}];
+  formCompromisos=[{compromiso:'',fechaLimite:'',indicador:''}];
   formFirmasM=[{nombre:'',cargo:''},{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formAcciones=[{accion:'',responsable:'',fecha:''}];
   formFirmasA=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formFirmasR=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formFirmasP=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
+  formFirmasCC=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
   formFirmasB=[{nombre:'',cargo:''},{nombre:'',cargo:''}];
 }
 
@@ -1429,6 +1536,7 @@ function renderNuevo(){
     <button class="btn ${newDocType==='aviso'?'btn-pri':'btn-ghost'}" onclick="newDocType='aviso';renderNuevo()">📢 Aviso</button>
     <button class="btn ${newDocType==='retroalimentacion'?'btn-pri':'btn-ghost'}" onclick="newDocType='retroalimentacion';renderNuevo()">💬 Retroalimentación</button>
     <button class="btn ${newDocType==='plantrabajo'?'btn-pri':'btn-ghost'}" onclick="newDocType='plantrabajo';renderNuevo()">📊 Plan de Trabajo</button>
+    <button class="btn ${newDocType==='cartacompromiso'?'btn-pri':'btn-ghost'}" onclick="newDocType='cartacompromiso';renderNuevo()">📝 Carta Compromiso</button>
     <button class="btn ${newDocType==='actaadmin'?'btn-pri':'btn-ghost'}" onclick="newDocType='actaadmin';renderNuevo()">⚠️ Acta Administrativa</button>
     <button class="btn ${newDocType==='baja'?'btn-pri':'btn-ghost'}" onclick="newDocType='baja';renderNuevo()">🚪 Baja</button>
   </div>
@@ -1685,6 +1793,36 @@ function renderFormContent(){
       <div id="anexos-preview"></div>
     </div>
     <div class="fg"><label>Tabla o texto adicional</label><textarea id="f-tabla" rows="4" placeholder="Pega aquí tablas de Excel o texto adicional..."></textarea></div>`;
+  } else if(newDocType==='cartacompromiso'){
+    h+=`<div class="sec-title">📝 Carta Compromiso</div>
+    <div class="grid2">
+      <div class="fg"><label>Folio</label><input id="f-ccfolio" value="EC-CC-${String(loadDocs().filter(d=>d.type==='cartacompromiso').length+1).padStart(3,'0')}"></div>
+      <div class="fg"><label>Fecha <span class="req">*</span></label><input type="date" id="f-ccfecha"></div>
+      <div class="fg"><label>Colaborador <span class="req">*</span></label><select id="f-cccolaborador">${optionsList(COLABORADORES)}</select></div>
+      <div class="fg"><label>Puesto</label><select id="f-ccpuesto">${optionsList(PUESTOS)}</select></div>
+      <div class="fg"><label>Área</label><select id="f-ccarea"><option>Celula Atlixco</option><option>Celula Neza</option><option>Administrativos</option><option>Operacion de ventas</option><option>Mineria</option><option>Control documental</option><option>Coordinacion</option><option>Supervision</option></select></div>
+      <div class="fg"><label>Jefe Directo</label><select id="f-ccsupervisor">${optionsList(SUPERVISORES)}</select></div>
+    </div>
+    
+    <div class="sec-title">📋 Motivo de la Carta</div>
+    <div class="fg"><label>Tipo de Situación</label><select id="f-cctipo"><option>Bajo rendimiento</option><option>Incumplimiento de indicadores</option><option>Faltas de asistencia</option><option>Retardos recurrentes</option><option>Comportamiento inadecuado</option><option>Incumplimiento de políticas</option><option>Procesos</option><option>Otro</option></select></div>
+    <div class="fg"><label>Descripción de la Situación <span class="req">*</span></label><textarea id="f-ccsituacion" rows="3" placeholder="Describe la situación o problema que origina esta carta..."></textarea></div>
+    <div class="fg"><label>Antecedentes</label><textarea id="f-ccantecedentes" rows="2" placeholder="Llamadas de atención previas, retroalimentaciones, etc..."></textarea></div>
+    
+    <div class="sec-title">🎯 Compromisos</div>
+    <div id="tbl-compromisos"></div>
+    
+    <div class="sec-title">⚠️ Consecuencias</div>
+    <div class="fg"><label>Consecuencias de Incumplimiento</label><textarea id="f-ccconsecuencias" rows="2" placeholder="Acciones que se tomarán si no se cumplen los compromisos...">En caso de no cumplir con los compromisos establecidos, se procederá con las medidas disciplinarias correspondientes, que pueden incluir la rescisión del contrato laboral.</textarea></div>
+    
+    <div class="sec-title">📆 Seguimiento</div>
+    <div class="grid2">
+      <div class="fg"><label>Fecha de Revisión</label><input type="date" id="f-ccrevision"></div>
+      <div class="fg"><label>Responsable de Seguimiento</label><select id="f-ccresponsable">${optionsList(SUPERVISORES)}</select></div>
+    </div>
+    <div class="fg"><label>Observaciones</label><textarea id="f-ccobs" rows="2" placeholder="Notas adicionales..."></textarea></div>
+    
+    <div class="sec-title">✍️ Firmas</div><div id="tbl-firmasCC"></div>`;
   } else if(newDocType==='baja'){
     h+=`<div class="sec-title">🚪 Baja de Personal</div>
     <div class="grid2">
@@ -1780,6 +1918,9 @@ function renderFormContent(){
       renderMiniTable('tbl-firmasR',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasR,'formFirmasR');
     } else if(newDocType==='plantrabajo'){
       renderMiniTable('tbl-firmasP',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasP,'formFirmasP');
+    } else if(newDocType==='cartacompromiso'){
+      renderMiniTable('tbl-compromisos',[{key:'compromiso',label:'Compromiso',ph:'Descripción del compromiso'},{key:'fechaLimite',label:'Fecha Límite',type:'date'},{key:'indicador',label:'Indicador de Cumplimiento',ph:'Cómo se medirá'}],formCompromisos,'formCompromisos');
+      renderMiniTable('tbl-firmasCC',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasCC,'formFirmasCC');
     } else if(newDocType==='baja'){
       renderMiniTable('tbl-firmasB',[{key:'nombre',label:'Nombre',type:'colaborador'},{key:'cargo',label:'Cargo',type:'puesto'}],formFirmasB,'formFirmasB');
     }
@@ -1917,7 +2058,7 @@ function ejecutarCargarEquipo(ref, containerId, colsB64){
 }
 
 function getFormRef(ref){
-  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formMetas,formFirmasM,formAcciones,formFirmasA,formFirmasR,formFirmasP,formFirmasB};
+  const m={formAsistentes,formOrden,formDesarrollo,formAcuerdos,formMetas,formCompromisos,formFirmasM,formAcciones,formFirmasA,formFirmasR,formFirmasP,formFirmasCC,formFirmasB};
   return m[ref];
 }
 function updateFormRow(ref,i,k,v){getFormRef(ref)[i][k]=v;}
@@ -2085,6 +2226,19 @@ function collectDocData(){
         firmaColaborador:V('f-aafirma1'),firmaSupervisor:V('f-aafirma2'),firmaEmite:V('f-aafirma3'),firmaTestigo:V('f-aafirma4'),
         anexos:anexos,tabla:tabla}
     };
+  } else if(newDocType==='cartacompromiso'){
+    return {
+      type:'cartacompromiso', folio:V('f-ccfolio'), title:`Carta Compromiso – ${V('f-cccolaborador')}`,
+      displayDate:fmtDate(V('f-ccfecha')), status:'pendiente',
+      data:{fecha:V('f-ccfecha'),colaborador:V('f-cccolaborador'),puesto:V('f-ccpuesto'),
+        area:V('f-ccarea'),supervisor:V('f-ccsupervisor'),
+        tipo:V('f-cctipo'),situacion:V('f-ccsituacion'),antecedentes:V('f-ccantecedentes'),
+        compromisos:formCompromisos.filter(c=>c.compromiso),
+        consecuencias:V('f-ccconsecuencias'),
+        fechaRevision:V('f-ccrevision'),responsableSeguimiento:V('f-ccresponsable'),
+        observaciones:V('f-ccobs'),
+        firmas:formFirmasCC.filter(f=>f.nombre)}
+    };
   } else if(newDocType==='baja'){
     const finiquito = calcularFiniquito();
     return {
@@ -2152,8 +2306,8 @@ function downloadDocWord(id){const docs=loadDocs();const d=docs.find(x=>x.id===i
 // ══════════════════════════════════════════════════════
 function generateDocPDF(d){
   const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','letter');
-  const pageWidth=216, pageHeight=279, m=25;
-  const textWidth = 150; // Ancho muy conservador para evitar cortes
+  const pageWidth=216, pageHeight=279, m=20;
+  const textWidth = pageWidth - (m * 2); // Ancho correcto: 176mm
   let y=6;
   
   // Header
@@ -2165,14 +2319,14 @@ function generateDocPDF(d){
   doc.setDrawColor(27,117,187);doc.setLineWidth(0.7);doc.line(0,26,pageWidth,26);y=32;
 
   const dd=d.data||{};
-  const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
-  const maxY = pageHeight - 40; // Espacio amplio para el footer
+  const typeNames={minuta:'Minuta',aviso:'Aviso',retroalimentacion:'Retroalimentación',plantrabajo:'Plan de Trabajo',cartacompromiso:'Carta Compromiso',actaadmin:'Acta Administrativa',baja:'Baja de Personal'};
+  const maxY = pageHeight - 30; // Espacio para el footer
   
   const addFooter=(pn)=>{
     doc.setDrawColor(27,117,187);doc.setLineWidth(0.5);
-    doc.line(m, pageHeight-18, pageWidth-m, pageHeight-18);
+    doc.line(m, pageHeight-15, pageWidth-m, pageHeight-15);
     doc.setFontSize(7);doc.setTextColor(113,128,150);doc.setFont('helvetica','normal');
-    doc.text(`ExpertCell | ${typeNames[d.type]||d.type} | ${d.folio||''} | Pág ${pn}`, pageWidth/2, pageHeight-12, {align:'center'});
+    doc.text(`ExpertCell | ${typeNames[d.type]||d.type} | ${d.folio||''} | Pág ${pn}`, pageWidth/2, pageHeight-10, {align:'center'});
   };
   
   const newPage=()=>{
@@ -2518,6 +2672,75 @@ function generateDocPDF(d){
             doc.setFontSize(8);doc.setTextColor(113,128,150);doc.text(img.name||('Imagen '+(idx+1)),m,y);y+=6;
           }
         }catch(e){}
+      });
+    }
+
+  } else if(d.type==='cartacompromiso'){
+    doc.setFillColor(230,126,34);doc.roundedRect(m,y,textWidth,18,3,3,'F');
+    doc.setFontSize(20);doc.setTextColor(255);doc.setFont('helvetica','bold');doc.text('CARTA COMPROMISO',pageWidth/2,y+10,{align:'center'});
+    doc.setFontSize(9);doc.setTextColor(255,220,180);doc.text(`${dd.tipo||''}     Folio: ${d.folio||''}`,pageWidth/2,y+15.5,{align:'center'});y+=24;
+
+    sec('Datos del Colaborador');
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:50,fillColor:[253,235,220],fontStyle:'bold',textColor:[180,95,6]},1:{cellWidth:textWidth-50}},body:[
+      ['Fecha:',fmtDate(dd.fecha)],
+      ['Colaborador:',dd.colaborador||'—'],
+      ['Puesto:',dd.puesto||'—'],
+      ['Área:',dd.area||'—'],
+      ['Jefe Directo:',dd.supervisor||'—']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    sec('Motivo de la Carta');
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:50,fillColor:[253,235,220],fontStyle:'bold',textColor:[180,95,6]},1:{cellWidth:textWidth-50}},body:[
+      ['Tipo de Situación:',dd.tipo||'—'],
+      ['Descripción:',dd.situacion||'—'],
+      ['Antecedentes:',dd.antecedentes||'Sin antecedentes registrados']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    if(dd.compromisos?.length){
+      sec('Compromisos Acordados');
+      const col1=12, col2=textWidth*0.45, col3=35, col4=textWidth-col1-col2-col3;
+      doc.autoTable({startY:y,...tblOpts,head:[['#','Compromiso','Fecha Límite','Indicador de Cumplimiento']],body:dd.compromisos.map((c,i)=>[i+1,c.compromiso,fmtDate(c.fechaLimite),c.indicador||'—']),columnStyles:{0:{cellWidth:col1,halign:'center'},1:{cellWidth:col2},2:{cellWidth:col3,halign:'center'},3:{cellWidth:col4}}});
+      y=doc.lastAutoTable.finalY+6;
+    }
+
+    if(dd.consecuencias){sec('Consecuencias de Incumplimiento');addText(dd.consecuencias);}
+
+    sec('Seguimiento');
+    doc.autoTable({startY:y,...tblOpts,columnStyles:{0:{cellWidth:50,fillColor:[253,235,220],fontStyle:'bold',textColor:[180,95,6]},1:{cellWidth:textWidth-50}},body:[
+      ['Fecha de Revisión:',fmtDate(dd.fechaRevision)||'—'],
+      ['Responsable:',dd.responsableSeguimiento||'—']
+    ]});y=doc.lastAutoTable.finalY+6;
+
+    if(dd.observaciones){sec('Observaciones');addText(dd.observaciones);}
+
+    // Firmas
+    if(dd.firmas?.length){
+      y += 10;
+      if(y > maxY - 50) { newPage(); }
+      sec('Firmas');
+      y += 12;
+      const firmasPerRow = 2;
+      const firmaW = textWidth / firmasPerRow;
+      const lineW = 55;
+      
+      dd.firmas.forEach((f,i)=>{
+        const col = i % firmasPerRow;
+        if(col === 0 && i > 0) y += 35;
+        if(y > maxY - 40){ newPage(); y += 20; }
+        
+        const cx = m + firmaW*col + firmaW/2;
+        doc.setDrawColor(74,74,74);
+        doc.setLineWidth(.4);
+        doc.line(cx - lineW/2, y, cx + lineW/2, y);
+        doc.setFontSize(9);
+        doc.setTextColor(50,50,50);
+        doc.setFont('helvetica','bold');
+        const nombreLines = doc.splitTextToSize(f.nombre||'', lineW);
+        doc.text(nombreLines, cx, y+5, {align:'center'});
+        doc.setFontSize(8);
+        doc.setFont('helvetica','normal');
+        doc.setTextColor(113,128,150);
+        doc.text(f.cargo||'', cx, y+10 + (nombreLines.length-1)*4, {align:'center'});
       });
     }
 
